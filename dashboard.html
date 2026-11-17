@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trip Split · Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#F2F2F7;--card:#FFFFFF;--label:#000;--label2:rgba(60,60,67,.6);--sep:rgba(60,60,67,.16);
+  --blue:#007AFF;--green:#34C759;--red:#FF3B30;--fill:rgba(120,120,128,.12);--glass:rgba(250,250,252,.72);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#000;--card:#1C1C1E;--label:#fff;--label2:rgba(235,235,245,.6);--sep:rgba(84,84,88,.6);
+    --blue:#0A84FF;--green:#30D158;--red:#FF453A;--fill:rgba(120,120,128,.24);--glass:rgba(40,40,44,.66);color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#000;--card:#1C1C1E;--label:#fff;--label2:rgba(235,235,245,.6);--sep:rgba(84,84,88,.6);
+  --blue:#0A84FF;--green:#30D158;--red:#FF453A;--fill:rgba(120,120,128,.24);--glass:rgba(40,40,44,.66);color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%;background:var(--bg)}
+body{color:var(--label);font:16px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Roboto,"Segoe UI",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+button,input{font-family:inherit}
+
+/* login */
+.login{min-height:100vh;display:grid;place-items:center}
+.login form{width:360px;text-align:center}
+.login h1{font-size:30px;margin:0 0 6px;letter-spacing:-.02em}
+.login p{color:var(--label2);margin:0 0 20px}
+.login input[type=password]{width:100%;border:0;border-radius:14px;background:var(--card);color:var(--label);padding:15px;font-size:17px;text-align:center;outline:none;margin-bottom:12px}
+.btn{border:0;border-radius:14px;padding:14px;background:var(--blue);color:#fff;font-size:17px;font-weight:600;width:100%;cursor:pointer}
+.err{color:var(--red);min-height:20px;font-size:14px}
+
+/* layout */
+.dash{height:100vh;min-height:760px;display:grid;grid-template-rows:auto auto 1fr 1fr;gap:16px;padding:20px 28px 24px}
+header{display:flex;justify-content:space-between;align-items:center}
+header h1{margin:0;font-size:34px;letter-spacing:-.02em;font-weight:700}
+header .sub{color:var(--label2);font-size:14px;margin-top:2px}
+.tools{display:flex;gap:10px;align-items:center;color:var(--label2);font-size:14px}
+.tools button{height:40px;min-width:40px;padding:0 14px;border-radius:999px;border:0;background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);color:var(--blue);font-size:15px;box-shadow:inset 0 0 0 .5px var(--sep);cursor:pointer}
+.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:16px}
+.kpi{background:var(--card);border-radius:22px;padding:16px 20px}
+.kpi .l{color:var(--label2);font-size:14px}
+.kpi .v{font-size:clamp(26px,2.3vw,40px);font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;margin-top:4px;white-space:nowrap}
+.kpi .n{color:var(--label2);font-size:13px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi.accent{background:linear-gradient(135deg,#0A84FF,#5E5CE6);color:#fff}
+.kpi.accent .l,.kpi.accent .n{color:rgba(255,255,255,.8)}
+.row3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;min-height:0}
+.panel{background:var(--card);border-radius:22px;padding:18px 20px;display:flex;flex-direction:column;min-height:0;min-width:0}
+.panel h2{margin:0 0 10px;font-size:18px;font-weight:600;display:flex;justify-content:space-between;align-items:baseline}
+.panel h2 small{font-size:13px;font-weight:400;color:var(--label2)}
+.chart{position:relative;flex:1;min-height:0}
+.scroll{overflow:auto;flex:1;min-height:0}
+table{width:100%;border-collapse:collapse}
+td,th{padding:9px 6px;border-bottom:.5px solid var(--sep);text-align:left;font-size:15px}
+th{color:var(--label2);font-weight:400;font-size:13px}
+td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
+.pos{color:var(--green)}.neg{color:var(--red)}
+.pill{display:inline-block;padding:2px 10px;border-radius:999px;background:var(--fill);font-size:13px}
+.stl{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:.5px solid var(--sep)}
+.stl:last-child{border:0}
+.stl b{font-weight:600}.stl .s{color:var(--label2);font-size:13px}
+.empty{color:var(--label2);text-align:center;padding:30px 0}
+@media (max-width:1100px){
+  .dash{height:auto}.kpis{grid-template-columns:repeat(2,1fr)}.row3{grid-template-columns:1fr}.chart{min-height:300px}
+}
+</style>
+</head>
+<body>
+
+<div class="login" id="login">
+  <form id="loginForm">
+    <h1>Trip Split</h1>
+    <p>Enter the trip password to open the dashboard.</p>
+    <input id="pw" type="password" autocomplete="current-password" placeholder="Password" required>
+    <button class="btn" id="loginBtn" type="submit">Unlock</button>
+    <div class="err" id="err"></div>
+  </form>
+</div>
+
+<div class="dash" id="dash" hidden>
+  <header>
+    <div><h1 id="tripName">Trip</h1><div class="sub" id="tripSub"></div></div>
+    <div class="tools"><span id="updated"></span>
+      <button id="refresh">↻ Refresh</button><button id="theme">◐ Auto</button><button id="out">Sign out</button></div>
+  </header>
+  <section class="kpis" id="kpis"></section>
+  <section class="row3">
+    <div class="panel"><h2>Spending by category <small id="catNote"></small></h2><div class="chart"><canvas id="cCat"></canvas></div></div>
+    <div class="panel"><h2>Spending per day <small>dotted line = daily average</small></h2><div class="chart"><canvas id="cDay"></canvas></div></div>
+    <div class="panel"><h2>Paid vs fair share <small>per person</small></h2><div class="chart"><canvas id="cPerson"></canvas></div></div>
+  </section>
+  <section class="row3">
+    <div class="panel"><h2>Settle up <small id="stlNote"></small></h2><div class="scroll" id="settle"></div></div>
+    <div class="panel"><h2>Latest expenses</h2><div class="scroll" id="recent"></div></div>
+    <div class="panel"><h2>Total spent so far <small>cumulative</small></h2><div class="chart"><canvas id="cCum"></canvas></div></div>
+  </section>
+</div>
+
+<script>
+(() => {
+'use strict';
+/* ===== Paste the SAME Web App URL you used in index.html ===== */
+const API_URL = 'https://script.google.com/macros/s/AKfycbwehaut0Llbq6e6jHzQgqSKwJXNcvG_OoxMYayS7aZoFvXI5m5APeaxEsk7N3EZKjH7/exec';
+/* ============================================================= */
+
+const $ = s => document.querySelector(s);
+const PALETTE = ['#0A84FF', '#30D158', '#FF9F0A', '#FF453A', '#BF5AF2', '#64D2FF', '#FFD60A', '#FF375F', '#5E5CE6', '#AC8E68'];
+const state = { pw: '', data: null, charts: {}, timer: null };
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const r2 = n => Math.round(n * 100) / 100;
+const cssv = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+function money(n) {
+  const cur = state.data ? state.data.settings.currency : '';
+  return cur + Number(n).toLocaleString(cur === '₹' ? 'en-IN' : 'en-US', { maximumFractionDigits: 0 });
+}
+function money2(n) {
+  const cur = state.data.settings.currency;
+  return cur + Number(n).toLocaleString(cur === '₹' ? 'en-IN' : 'en-US', { maximumFractionDigits: 2 });
+}
+function fmtDate(iso) { const d = new Date(iso + 'T00:00:00'); return isNaN(d) ? iso : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }); }
+
+async function api(action) {
+  if (API_URL.includes('PASTE_YOUR')) throw new Error('Paste your Web App URL into dashboard.html first.');
+  let res;
+  try { res = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action, password: state.pw }) }); }
+  catch (e) { throw new Error("Can't reach the server."); }
+  const j = await res.json();
+  if (!j.ok) throw new Error(j.error || 'Error');
+  return j.data;
+}
+
+/* ---------- theme ---------- */
+function applyTheme() {
+  const t = localStorage.getItem('ts_theme') || 'auto', root = document.documentElement;
+  if (t === 'auto') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', t);
+  $('#theme').textContent = { auto: '◐ Auto', light: '☀︎ Light', dark: '☾ Dark' }[t];
+}
+$('#theme').onclick = () => {
+  const o = ['auto', 'light', 'dark'], c = localStorage.getItem('ts_theme') || 'auto';
+  localStorage.setItem('ts_theme', o[(o.indexOf(c) + 1) % 3]); applyTheme(); if (state.data) render();
+};
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { applyTheme(); if (state.data) render(); });
+
+/* ---------- login ---------- */
+async function load(first) {
+  try { state.data = await api('getAll'); }
+  catch (e) {
+    if (first) { showLogin(e.message); return false; }
+    if (/Wrong password/.test(e.message)) { signOut(); } return false;
+  }
+  return true;
+}
+function showLogin(msg) { $('#dash').hidden = true; $('#login').hidden = false; $('#err').textContent = msg || ''; $('#loginBtn').disabled = false; $('#loginBtn').textContent = 'Unlock'; }
+async function start(pw, remember) {
+  state.pw = pw;
+  if (await load(true)) {
+    (remember ? localStorage : sessionStorage).setItem('ts_pw', pw);
+    $('#login').hidden = true; $('#dash').hidden = false; render();
+    clearInterval(state.timer); state.timer = setInterval(async () => { if (await load(false)) render(); }, 60000);
+  } else { localStorage.removeItem('ts_pw'); sessionStorage.removeItem('ts_pw'); }
+}
+function signOut() { clearInterval(state.timer); state.pw = ''; state.data = null; localStorage.removeItem('ts_pw'); sessionStorage.removeItem('ts_pw'); showLogin(); }
+$('#loginForm').addEventListener('submit', async e => { e.preventDefault(); const b = $('#loginBtn'); b.disabled = true; b.textContent = 'Checking…'; await start($('#pw').value, true); });
+$('#out').onclick = signOut;
+$('#refresh').onclick = async () => { $('#refresh').textContent = '↻ …'; if (await load(false)) render(); $('#refresh').textContent = '↻ Refresh'; };
+
+/* ---------- calculations ---------- */
+function calc() {
+  const s = state.data.settings, main = s.mainPayer;
+  const paid = {}, share = {}, net = {}, byCat = {}, byDay = {};
+  const ensure = p => { if (paid[p] === undefined) { paid[p] = 0; share[p] = 0; } };
+  s.travellers.forEach(ensure);
+  let total = 0, biggest = null;
+  state.data.expenses.forEach(e => {
+    const split = e.split.length ? e.split : s.travellers, amt = Number(e.amount);
+    total += amt; ensure(e.paidBy); paid[e.paidBy] += amt;
+    split.forEach(p => { ensure(p); share[p] += amt / split.length; });
+    byCat[e.category] = (byCat[e.category] || 0) + amt;
+    byDay[e.day] = (byDay[e.day] || 0) + amt;
+    if (!biggest || amt > biggest.amount) biggest = e;
+  });
+  const people = Object.keys(paid);
+  people.forEach(p => net[p] = paid[p] - share[p]);
+  state.data.payments.forEach(p => { net[p.from] = (net[p.from] || 0) + Number(p.amount); net[p.to] = (net[p.to] || 0) - Number(p.amount); });
+  const transfers = [];
+  people.forEach(p => {
+    if (p === main) return;
+    const b = r2(net[p]);
+    if (b < -0.009) transfers.push({ from: p, to: main, amount: -b });
+    else if (b > 0.009) transfers.push({ from: main, to: p, amount: b });
+  });
+  return { paid, share, net, people, total, byCat, byDay, transfers, biggest };
+}
+
+/* ---------- render ---------- */
+function mkChart(id, cfg) {
+  if (state.charts[id]) state.charts[id].destroy();
+  state.charts[id] = new Chart($('#' + id), cfg);
+}
+function render() {
+  const s = state.data.settings, ex = state.data.expenses, c = calc();
+  const label2 = cssv('--label2'), sep = cssv('--sep'), card = cssv('--card');
+  Chart.defaults.color = label2; Chart.defaults.borderColor = sep;
+  Chart.defaults.font.family = '-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Roboto,Arial,sans-serif';
+  Chart.defaults.font.size = 14;
+
+  const n = s.travellers.length, daysUsed = Object.keys(c.byDay).length;
+  const maxDay = Math.max(s.days, ...Object.keys(c.byDay).map(Number), 1);
+  $('#tripName').textContent = s.tripName;
+  $('#tripSub').textContent = `${n} travellers · ${s.days} days · main payer ${s.mainPayer}`;
+  $('#updated').textContent = 'Updated ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+
+  $('#kpis').innerHTML = [
+    ['accent', 'Total spent', money(c.total), `${ex.length} expenses`],
+    ['', `Average per person (÷ ${n})`, money(c.total / n), 'fair share so far'],
+    ['', 'Average per day', money(daysUsed ? c.total / daysUsed : 0), `${daysUsed} of ${s.days} days logged`],
+    ['', 'Per person per day', money(daysUsed ? c.total / n / daysUsed : 0), 'average daily share'],
+    ['', 'Biggest expense', c.biggest ? money(c.biggest.amount) : '—', c.biggest ? c.biggest.description : 'nothing yet'],
+    ['', 'Still to settle', money(c.transfers.filter(t => t.to === s.mainPayer).reduce((a, t) => a + t.amount, 0)), `owed to ${s.mainPayer}`]
+  ].map(k => `<div class="kpi ${k[0]}"><div class="l">${esc(k[1])}</div><div class="v">${esc(k[2])}</div><div class="n">${esc(k[3])}</div></div>`).join('');
+
+  /* category doughnut */
+  const cats = Object.entries(c.byCat).sort((a, b) => b[1] - a[1]);
+  $('#catNote').textContent = cats.length ? 'top: ' + cats[0][0] : '';
+  mkChart('cCat', {
+    type: 'doughnut',
+    data: { labels: cats.map(x => x[0]), datasets: [{ data: cats.map(x => r2(x[1])), backgroundColor: cats.map((_, i) => PALETTE[i % PALETTE.length]), borderColor: card, borderWidth: 3 }] },
+    options: { maintainAspectRatio: false, cutout: '62%', plugins: { legend: { position: 'right', labels: { usePointStyle: true, padding: 14 } },
+      tooltip: { callbacks: { label: t => ` ${t.label}: ${money(t.raw)} (${(t.raw / c.total * 100).toFixed(1)}%)` } } } }
+  });
+
+  /* per-day bars + average line */
+  const dayLabels = Array.from({ length: maxDay }, (_, i) => 'D' + (i + 1));
+  const dayVals = dayLabels.map((_, i) => r2(c.byDay[i + 1] || 0));
+  const avgDay = daysUsed ? c.total / daysUsed : 0;
+  mkChart('cDay', {
+    type: 'bar',
+    data: { labels: dayLabels, datasets: [
+      { type: 'bar', label: 'Spent', data: dayVals, backgroundColor: cssv('--blue'), borderRadius: 6, maxBarThickness: 34 },
+      { type: 'line', label: 'Average', data: dayLabels.map(() => r2(avgDay)), borderColor: '#FF9F0A', borderDash: [6, 6], borderWidth: 2, pointRadius: 0 }
+    ] },
+    options: { maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: t => ` ${t.dataset.label}: ${money(t.raw)}` } } },
+      scales: { y: { beginAtZero: true, ticks: { callback: v => money(v) }, grid: { color: sep } }, x: { grid: { display: false } } } }
+  });
+
+  /* paid vs share */
+  mkChart('cPerson', {
+    type: 'bar',
+    data: { labels: c.people, datasets: [
+      { label: 'Paid', data: c.people.map(p => r2(c.paid[p])), backgroundColor: cssv('--blue'), borderRadius: 6 },
+      { label: 'Fair share', data: c.people.map(p => r2(c.share[p])), backgroundColor: '#FF9F0A', borderRadius: 6 }
+    ] },
+    options: { maintainAspectRatio: false, plugins: { legend: { position: 'top', labels: { usePointStyle: true } }, tooltip: { callbacks: { label: t => ` ${t.dataset.label}: ${money(t.raw)}` } } },
+      scales: { y: { beginAtZero: true, ticks: { callback: v => money(v) } }, x: { grid: { display: false } } } }
+  });
+
+  /* settle list */
+  $('#stlNote').textContent = 'everyone ↔ ' + s.mainPayer;
+  $('#settle').innerHTML = c.transfers.length
+    ? c.transfers.map(t => `<div class="stl"><div><b>${esc(t.from)}</b> pays <b>${esc(t.to)}</b><div class="s">${t.to === s.mainPayer ? 'owes the main payer' : 'gets money back'}</div></div><div class="${t.to === s.mainPayer ? 'neg' : 'pos'}" style="font-weight:600;font-size:18px">${money2(r2(t.amount))}</div></div>`).join('')
+    : '<div class="empty">All settled 🎉</div>';
+
+  /* latest expenses */
+  const recent = [...ex].sort((a, b) => b.date.localeCompare(a.date) || (b.added || '').localeCompare(a.added || '')).slice(0, 25);
+  $('#recent').innerHTML = recent.length
+    ? `<table><tr><th>Day</th><th>For</th><th>Paid by</th><th class="r">Amount</th></tr>` +
+      recent.map(e => `<tr><td><span class="pill">D${e.day}</span></td><td>${esc(e.description)}<div style="color:var(--label2);font-size:12px">${esc(e.category)} · ${esc(fmtDate(e.date))}</div></td><td>${esc(e.paidBy)}</td><td class="r">${money2(e.amount)}</td></tr>`).join('') + '</table>'
+    : '<div class="empty">No expenses yet</div>';
+
+  /* cumulative line */
+  let run = 0;
+  const cum = dayLabels.map((_, i) => { run += c.byDay[i + 1] || 0; return r2(run); });
+  const lastDay = Math.max(0, ...Object.keys(c.byDay).map(Number));
+  mkChart('cCum', {
+    type: 'line',
+    data: { labels: dayLabels, datasets: [{ label: 'Total', data: cum.map((v, i) => (i + 1 <= lastDay ? v : null)), borderColor: cssv('--green'), backgroundColor: 'rgba(48,209,88,.16)', fill: true, tension: .3, pointRadius: 3, borderWidth: 3 }] },
+    options: { maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: t => ` ${money(t.raw)}` } } },
+      scales: { y: { beginAtZero: true, ticks: { callback: v => money(v) } }, x: { grid: { display: false } } } }
+  });
+}
+
+applyTheme();
+const saved = localStorage.getItem('ts_pw') || sessionStorage.getItem('ts_pw');
+if (saved) { $('#login').hidden = true; start(saved, !!localStorage.getItem('ts_pw')); }
+})();
+</script>
+</body>
+</html>
