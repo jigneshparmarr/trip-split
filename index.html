@@ -230,6 +230,12 @@ function moneyR(n) {
 }
 function todayISO() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 function fmtDate(iso) { const d = new Date(iso + 'T00:00:00'); return isNaN(d) ? iso : d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }); }
+function dayDate(d) {
+  const dt = new Date((state.data.settings.startDate || todayISO()) + 'T00:00:00');
+  if (isNaN(dt)) return '';
+  dt.setDate(dt.getDate() + d - 1);
+  return dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
 function vibrate(ms = 10) { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} }
 let toastTimer;
 function toast(msg, bad) {
@@ -307,20 +313,24 @@ $('#outBtn').onclick = () => signOut();
 
 /* ---------------- Navigation ---------------- */
 function destroyCharts() { Object.values(state.charts).forEach(c => c.destroy()); state.charts = {}; }
+function setSub() {
+  const s = state.data.settings;
+  $('#tripSub').textContent = isAdmin() ? `${s.tripName} · ${s.days} days · Day 1 = ${dayDate(1)}` : `Hi ${state.user.name} · ${s.tripName}`;
+}
 function go(tab) {
   if (!isAdmin()) tab = 'add';
   state.tab = tab; destroyCharts();
   document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
   document.body.classList.toggle('wide', tab === 'dashboard');
   $('#title').textContent = TITLES[tab];
-  const s = state.data.settings;
-  $('#tripSub').textContent = isAdmin() ? `${s.tripName} · ${s.days} days` : `Hi ${state.user.name} · ${s.tripName}`;
+  setSub();
   ({ add: renderAdd, dashboard: renderDashboard, history: renderHistory, settle: renderSettle })[tab]();
   window.scrollTo(0, 0);
 }
 async function refresh(silent) {
   try {
     await bootstrap(true);
+    setSub();
     if (!silent || state.tab !== 'add') go(state.tab);
     if (!silent) toast('Updated');
   } catch (e) { if (!silent) toast(e.message, true); }
@@ -400,7 +410,10 @@ async function saveExpense() {
   const b = $('#saveBtn'); state.saving = true; b.disabled = true; b.textContent = 'Saving…';
   try {
     const r = await api('addExpense', { expense });
-    if (isAdmin()) state.data.expenses.push(r.expense);
+    if (isAdmin()) {
+      state.data.expenses.push(r.expense);
+      if (r.expense.startDate && r.expense.startDate !== state.data.settings.startDate) await refresh(true); // Day 1 moved: reload day numbers
+    }
     $('#amt').value = ''; $('#amt').style.width = ''; $('#desc').value = ''; $('#loc').value = '';
     updateHint(); vibrate(15);
     toast('Added ' + money(r.expense.amount) + ' · ' + r.expense.description);
@@ -438,7 +451,7 @@ function renderDashboard() {
 }
 function drawDashFilter() {
   const s = state.data.settings, ex = state.data.expenses, f = state.dFilter, max = dashMaxDay(), to = f.to || max;
-  const days = sel => Array.from({ length: max }, (_, i) => `<option value="${i + 1}"${sel === i + 1 ? ' selected' : ''}>Day ${i + 1}</option>`).join('');
+  const days = sel => Array.from({ length: max }, (_, i) => `<option value="${i + 1}"${sel === i + 1 ? ' selected' : ''}>Day ${i + 1} · ${dayDate(i + 1)}</option>`).join('');
   const people = (id, val, label) => `<label class="fsel"><span>${label}</span><select id="${id}"><option value="all">Everyone</option>${s.travellers.map(p => `<option value="${esc(p)}"${val === p ? ' selected' : ''}>${esc(p)}</option>`).join('')}</select></label>`;
   const cats = [...new Set([...s.categories, ...ex.map(e => e.category)])];
   const list = dashList();
@@ -489,7 +502,7 @@ function drawDashBody() {
     data: { labels: cats.map(x => x[0]), datasets: [{ data: cats.map(x => r2(x[1])), backgroundColor: cats.map((_, i) => PALETTE[i % PALETTE.length]), borderColor: card, borderWidth: 3 }] },
     options: { maintainAspectRatio: false, cutout: '62%', plugins: { legend: { position: 'right', labels: { usePointStyle: true, padding: 12 } }, tooltip: { callbacks: { label: t => ` ${t.label}: ${money(t.raw)} (${(t.raw / c.total * 100).toFixed(1)}%)` } } } } });
   const dayNums = Array.from({ length: to - f.from + 1 }, (_, i) => f.from + i);
-  const dayLabels = dayNums.map(d => 'D' + d);
+  const dayLabels = dayNums.map(d => ['D' + d, dayDate(d)]);
   const avgDay = c.total / daysUsed;
   mkChart('cDay', { type: 'bar',
     data: { labels: dayLabels, datasets: [
@@ -519,7 +532,7 @@ function renderHistory() {
   const list = state.data.expenses.filter(e => state.dayFilter === 'all' || e.day === state.dayFilter)
     .sort((a, b) => b.date.localeCompare(a.date) || (b.added || '').localeCompare(a.added || ''));
   const groups = {}; list.forEach(e => (groups[e.date] = groups[e.date] || []).push(e));
-  let html = `<div class="scroll">${chip('day', 'all', state.dayFilter === 'all', 'All days') + days.map(d => chip('day', d, state.dayFilter === d, 'Day ' + d)).join('')}</div>`;
+  let html = `<div class="scroll">${chip('day', 'all', state.dayFilter === 'all', 'All days') + days.map(d => chip('day', d, state.dayFilter === d, 'Day ' + d + ' · ' + dayDate(d))).join('')}</div>`;
   if (list.length) {
     const tot = list.reduce((a, e) => a + e.amount, 0);
     html += `<div class="card hero"><div class="big">${money(tot)}</div><div class="s">${list.length} expense${list.length > 1 ? 's' : ''}${state.dayFilter === 'all' ? '' : ' on day ' + state.dayFilter}</div></div>`;
