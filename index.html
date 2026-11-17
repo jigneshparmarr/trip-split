@@ -131,12 +131,22 @@ td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
 @media (min-width:1100px){
   .kpis{grid-template-columns:repeat(6,1fr);gap:16px}
   .kpi .v{font-size:clamp(26px,2.2vw,40px)}
-  .dash{grid-template-rows:auto 1fr 1fr;min-height:calc(100dvh - 210px)}
+  .dash{grid-template-rows:auto 1fr 1fr;min-height:calc(100dvh - 300px)}
   .row3{grid-template-columns:repeat(3,1fr)}
   .chart{min-height:0}
   .pscroll{max-height:none}
   .panel{padding:18px 20px}
 }
+
+
+.dfilter{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
+.fsel{display:flex;align-items:center;gap:8px;background:var(--card);border-radius:999px;padding:6px 8px 6px 14px;font-size:14px;color:var(--label2)}
+.fsel select{border:0;background:var(--fill);color:var(--label);border-radius:999px;padding:7px 10px;font-size:14px;outline:none;max-width:42vw}
+.dfilter .chips{gap:6px}
+.dfilter .chip{padding:7px 12px;font-size:14px}
+.fcount{color:var(--label2);font-size:13px}
+.fcount b{color:var(--label)}
+.fright{margin-left:auto;display:flex;gap:12px;align-items:center}
 
 /* ---------- Sheets, toast ---------- */
 .sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.42);z-index:30;display:flex;align-items:flex-end;justify-content:center}
@@ -199,7 +209,8 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbwehaut0Llbq6e6jHzQgqSK
 /* ============================================================================== */
 
 const $ = s => document.querySelector(s);
-const state = { token: '', user: null, data: null, tab: 'add', dayFilter: 'all', form: { paidBy: '', category: '', split: new Set() }, saving: false, charts: {}, timer: null, transfers: [] };
+const newFilter = () => ({ from: 1, to: null, cats: new Set(), paid: 'all', share: 'all' });
+const state = { dFilter: newFilter(), token: '', user: null, data: null, tab: 'add', dayFilter: 'all', form: { paidBy: '', category: '', split: new Set() }, saving: false, charts: {}, timer: null, transfers: [] };
 const TITLES = { add: 'Add expense', dashboard: 'Dashboard', history: 'Expenses', settle: 'Settle up' };
 const ICONS = { food: '🍽️', stay: '🏨', hotel: '🏨', transport: '🚕', taxi: '🚕', fuel: '⛽', tickets: '🎟️', shopping: '🛍️', activities: '🎡', drinks: '☕', other: '🧾' };
 const PALETTE = ['#0A84FF', '#30D158', '#FF9F0A', '#FF453A', '#BF5AF2', '#64D2FF', '#FFD60A', '#FF375F', '#5E5CE6', '#AC8E68'];
@@ -318,13 +329,14 @@ $('#refreshBtn').onclick = () => refresh(false);
 document.addEventListener('visibilitychange', () => { if (!document.hidden && state.user && !state.saving) refresh(true); });
 
 /* ---------------- Calculations (admin) ---------------- */
-function calc() {
+function calc(exps) {
+  exps = exps || state.data.expenses;
   const s = state.data.settings, main = s.mainPayer;
   const paid = {}, share = {}, net = {}, byCat = {}, byDay = {};
   const ensure = p => { if (paid[p] === undefined) { paid[p] = 0; share[p] = 0; } };
   s.travellers.forEach(ensure);
   let total = 0, biggest = null;
-  state.data.expenses.forEach(e => {
+  exps.forEach(e => {
     const split = e.split.length ? e.split : s.travellers, amt = Number(e.amount);
     total += amt; ensure(e.paidBy); paid[e.paidBy] += amt;
     split.forEach(p => { ensure(p); share[p] += amt / split.length; });
@@ -398,33 +410,74 @@ async function saveExpense() {
 
 /* ---------------- DASHBOARD (admin) ---------------- */
 function mkChart(id, cfg) { const el = $('#' + id); if (!el || !window.Chart) return; state.charts[id] = new Chart(el, cfg); }
+function dashMaxDay() { return Math.max(state.data.settings.days, ...state.data.expenses.map(e => e.day || 0), 1); }
+function dashActive() {
+  const f = state.dFilter;
+  return f.from > 1 || (f.to && f.to < dashMaxDay()) || f.cats.size > 0 || f.paid !== 'all' || f.share !== 'all';
+}
+function dashList() {
+  const f = state.dFilter, s = state.data.settings, to = f.to || dashMaxDay();
+  return state.data.expenses.filter(e => e.day >= f.from && e.day <= to
+    && (!f.cats.size || f.cats.has(e.category))
+    && (f.paid === 'all' || e.paidBy === f.paid)
+    && (f.share === 'all' || (e.split.length ? e.split : s.travellers).includes(f.share)));
+}
 function renderDashboard() {
   destroyCharts();
-  const s = state.data.settings, ex = state.data.expenses;
+  const s = state.data.settings, ex = state.data.expenses, f = state.dFilter;
   if (!ex.length) { $('#view').innerHTML = `<div class="empty"><b>No expenses yet</b>The dashboard fills up as soon as the first expense is added.</div>`; return; }
-  const c = calc(), n = s.travellers.length, daysUsed = Object.keys(c.byDay).length;
-  const maxDay = Math.max(s.days, ...Object.keys(c.byDay).map(Number), 1);
-  const toSettle = c.transfers.filter(t => t.to === s.mainPayer).reduce((a, t) => a + t.amount, 0);
+  const known = new Set([...s.categories, ...ex.map(e => e.category)]);
+  f.cats = new Set([...f.cats].filter(c => known.has(c)));
+  if (f.paid !== 'all' && !s.travellers.includes(f.paid)) f.paid = 'all';
+  if (f.share !== 'all' && !s.travellers.includes(f.share)) f.share = 'all';
+  const max = dashMaxDay();
+  if (f.from > max) f.from = 1;
+  if (f.to && f.to >= max) f.to = null;
+  $('#view').innerHTML = '<div id="dfilter" class="dfilter"></div><div id="dbody"></div>';
+  drawDashFilter(); drawDashBody();
+}
+function drawDashFilter() {
+  const s = state.data.settings, ex = state.data.expenses, f = state.dFilter, max = dashMaxDay(), to = f.to || max;
+  const days = sel => Array.from({ length: max }, (_, i) => `<option value="${i + 1}"${sel === i + 1 ? ' selected' : ''}>Day ${i + 1}</option>`).join('');
+  const people = (id, val, label) => `<label class="fsel"><span>${label}</span><select id="${id}"><option value="all">Everyone</option>${s.travellers.map(p => `<option value="${esc(p)}"${val === p ? ' selected' : ''}>${esc(p)}</option>`).join('')}</select></label>`;
+  const cats = [...new Set([...s.categories, ...ex.map(e => e.category)])];
+  const list = dashList();
+  $('#dfilter').innerHTML =
+    `<label class="fsel"><span>From</span><select id="dFrom">${days(f.from)}</select></label>
+     <label class="fsel"><span>To</span><select id="dTo">${days(to)}</select></label>
+     ${people('dPaid', f.paid, 'Paid by')}${people('dShare', f.share, 'Shared with')}
+     <div class="chips">${cats.map(c => `<button type="button" class="chip${f.cats.has(c) ? ' on' : ''}" data-dgrp="cat" data-v="${esc(c)}">${icon(c)} ${esc(c)}</button>`).join('')}</div>
+     <div class="fright"><span class="fcount">Showing <b>${list.length}</b> of ${ex.length} expenses</span>${dashActive() ? '<button type="button" class="btn small ghost" style="margin:0" data-dact="reset">Reset filters</button>' : ''}</div>`;
+}
+function drawDashBody() {
+  destroyCharts();
+  const s = state.data.settings, f = state.dFilter, list = dashList(), max = dashMaxDay(), to = f.to || max;
+  if (!list.length) { $('#dbody').innerHTML = `<div class="empty"><b>No expenses match these filters</b>Try a wider day range or clear a filter.</div>`; return; }
+  const c = calc(list), full = calc(), n = s.travellers.length, daysUsed = Object.keys(c.byDay).length;
+  const toSettle = full.transfers.filter(t => t.to === s.mainPayer).reduce((a, t) => a + t.amount, 0);
   const kpi = [
-    ['accent', 'Total spent', moneyR(c.total), `${ex.length} expenses`],
-    ['', `Average per person (÷ ${n})`, moneyR(c.total / n), 'fair share so far'],
-    ['', 'Average per day', moneyR(c.total / daysUsed), `${daysUsed} of ${s.days} days logged`],
+    ['accent', 'Total spent', moneyR(c.total), `${list.length} expense${list.length > 1 ? 's' : ''}${dashActive() ? ' (filtered)' : ''}`],
+    f.share === 'all'
+      ? ['', `Average per person (÷ ${n})`, moneyR(c.total / n), 'fair share']
+      : ['', `${f.share}'s share`, moneyR(c.share[f.share] || 0), 'of these expenses'],
+    ['', 'Average per day', moneyR(c.total / daysUsed), `${daysUsed} day${daysUsed > 1 ? 's' : ''} with spending`],
     ['', 'Per person per day', moneyR(c.total / n / daysUsed), 'average daily share'],
     ['', 'Biggest expense', c.biggest ? moneyR(c.biggest.amount) : '—', c.biggest ? c.biggest.description : ''],
-    ['', 'Still to settle', moneyR(toSettle), `owed to ${s.mainPayer}`]
+    ['', 'Still to settle', moneyR(toSettle), `owed to ${s.mainPayer} · all expenses`]
   ];
-  const recent = [...ex].sort((a, b) => b.date.localeCompare(a.date) || (b.added || '').localeCompare(a.added || '')).slice(0, 25);
-  $('#view').innerHTML = `<div class="dash">
+  const recent = [...list].sort((a, b) => b.date.localeCompare(a.date) || (b.added || '').localeCompare(a.added || '')).slice(0, 25);
+  const topCat = Object.entries(c.byCat).sort((a, b) => b[1] - a[1])[0][0];
+  $('#dbody').innerHTML = `<div class="dash">
     <section class="kpis">${kpi.map(k => `<div class="kpi ${k[0]}"><div class="l">${esc(k[1])}</div><div class="v">${esc(k[2])}</div><div class="n">${esc(k[3])}</div></div>`).join('')}</section>
     <section class="row3">
-      <div class="panel"><h2>Spending by category <small>${esc(Object.entries(c.byCat).sort((a, b) => b[1] - a[1])[0][0])} is highest</small></h2><div class="chart"><canvas id="cCat"></canvas></div></div>
+      <div class="panel"><h2>Spending by category <small>${esc(topCat)} is highest</small></h2><div class="chart"><canvas id="cCat"></canvas></div></div>
       <div class="panel"><h2>Spending per day <small>dotted line = average</small></h2><div class="chart"><canvas id="cDay"></canvas></div></div>
       <div class="panel"><h2>Paid vs fair share <small>per person</small></h2><div class="chart"><canvas id="cPerson"></canvas></div></div>
     </section>
     <section class="row3">
-      <div class="panel"><h2>Settle up <small>everyone ↔ ${esc(s.mainPayer)}</small></h2><div class="pscroll">${c.transfers.length ? c.transfers.map(t => `<div class="stl"><div><b>${esc(t.from)}</b> pays <b>${esc(t.to)}</b><div class="s">${t.to === s.mainPayer ? 'owes the main payer' : 'gets money back'}</div></div><div class="${t.to === s.mainPayer ? 'neg' : 'pos'}" style="font-weight:600;font-size:18px">${money(r2(t.amount))}</div></div>`).join('') : '<div class="empty">All settled 🎉</div>'}</div></div>
-      <div class="panel"><h2>Latest expenses</h2><div class="pscroll"><table><tr><th>Day</th><th>For</th><th>Paid by</th><th class="r">Amount</th></tr>${recent.map(e => `<tr><td><span class="pill">D${e.day}</span></td><td>${esc(e.description)}<div style="color:var(--label2);font-size:12px">${esc(e.category)} · ${esc(fmtDate(e.date))}${e.addedBy ? ' · by ' + esc(e.addedBy) : ''}</div></td><td>${esc(e.paidBy)}</td><td class="r">${money(e.amount)}</td></tr>`).join('')}</table></div></div>
-      <div class="panel"><h2>Total spent so far <small>cumulative</small></h2><div class="chart"><canvas id="cCum"></canvas></div></div>
+      <div class="panel"><h2>Settle up <small>all expenses · ↔ ${esc(s.mainPayer)}</small></h2><div class="pscroll">${full.transfers.length ? full.transfers.map(t => `<div class="stl"><div><b>${esc(t.from)}</b> pays <b>${esc(t.to)}</b><div class="s">${t.to === s.mainPayer ? 'owes the main payer' : 'gets money back'}</div></div><div class="${t.to === s.mainPayer ? 'neg' : 'pos'}" style="font-weight:600;font-size:18px">${money(r2(t.amount))}</div></div>`).join('') : '<div class="empty">All settled 🎉</div>'}</div></div>
+      <div class="panel"><h2>Latest expenses <small>${dashActive() ? 'filtered' : ''}</small></h2><div class="pscroll"><table><tr><th>Day</th><th>For</th><th>Paid by</th><th class="r">Amount</th></tr>${recent.map(e => `<tr><td><span class="pill">D${e.day}</span></td><td>${esc(e.description)}<div style="color:var(--label2);font-size:12px">${esc(e.category)} · ${esc(fmtDate(e.date))}${e.addedBy ? ' · by ' + esc(e.addedBy) : ''}</div></td><td>${esc(e.paidBy)}</td><td class="r">${money(e.amount)}</td></tr>`).join('')}</table></div></div>
+      <div class="panel"><h2>Total spent so far <small>cumulative${dashActive() ? ', filtered' : ''}</small></h2><div class="chart"><canvas id="cCum"></canvas></div></div>
     </section></div>`;
 
   if (!window.Chart) return;
@@ -435,12 +488,13 @@ function renderDashboard() {
   mkChart('cCat', { type: 'doughnut',
     data: { labels: cats.map(x => x[0]), datasets: [{ data: cats.map(x => r2(x[1])), backgroundColor: cats.map((_, i) => PALETTE[i % PALETTE.length]), borderColor: card, borderWidth: 3 }] },
     options: { maintainAspectRatio: false, cutout: '62%', plugins: { legend: { position: 'right', labels: { usePointStyle: true, padding: 12 } }, tooltip: { callbacks: { label: t => ` ${t.label}: ${money(t.raw)} (${(t.raw / c.total * 100).toFixed(1)}%)` } } } } });
-  const dayLabels = Array.from({ length: maxDay }, (_, i) => 'D' + (i + 1));
+  const dayNums = Array.from({ length: to - f.from + 1 }, (_, i) => f.from + i);
+  const dayLabels = dayNums.map(d => 'D' + d);
   const avgDay = c.total / daysUsed;
   mkChart('cDay', { type: 'bar',
     data: { labels: dayLabels, datasets: [
-      { type: 'bar', label: 'Spent', data: dayLabels.map((_, i) => r2(c.byDay[i + 1] || 0)), backgroundColor: cssv('--blue'), borderRadius: 6, maxBarThickness: 34 },
-      { type: 'line', label: 'Average', data: dayLabels.map(() => r2(avgDay)), borderColor: '#FF9F0A', borderDash: [6, 6], borderWidth: 2, pointRadius: 0 }] },
+      { type: 'bar', label: 'Spent', data: dayNums.map(d => r2(c.byDay[d] || 0)), backgroundColor: cssv('--blue'), borderRadius: 6, maxBarThickness: 34 },
+      { type: 'line', label: 'Average', data: dayNums.map(() => r2(avgDay)), borderColor: '#FF9F0A', borderDash: [6, 6], borderWidth: 2, pointRadius: 0 }] },
     options: { maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: t => ` ${t.dataset.label}: ${money(t.raw)}` } } },
       scales: { y: { beginAtZero: true, ticks: { callback: v => moneyR(v) } }, x: { grid: { display: false } } } } });
   mkChart('cPerson', { type: 'bar',
@@ -450,7 +504,7 @@ function renderDashboard() {
     options: { maintainAspectRatio: false, plugins: { legend: { position: 'top', labels: { usePointStyle: true } }, tooltip: { callbacks: { label: t => ` ${t.dataset.label}: ${money(t.raw)}` } } },
       scales: { y: { beginAtZero: true, ticks: { callback: v => moneyR(v) } }, x: { grid: { display: false } } } } });
   let run = 0; const lastDay = Math.max(...Object.keys(c.byDay).map(Number));
-  const cum = dayLabels.map((_, i) => { run += c.byDay[i + 1] || 0; return i + 1 <= lastDay ? r2(run) : null; });
+  const cum = dayNums.map(d => { run += c.byDay[d] || 0; return d <= lastDay ? r2(run) : null; });
   mkChart('cCum', { type: 'line',
     data: { labels: dayLabels, datasets: [{ label: 'Total', data: cum, borderColor: cssv('--green'), backgroundColor: 'rgba(48,209,88,.16)', fill: true, tension: .3, pointRadius: 3, borderWidth: 3 }] },
     options: { maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: t => ` ${money(t.raw)}` } } },
@@ -541,7 +595,7 @@ async function undoPayment(id) {
 
 /* ---------------- Events ---------------- */
 document.addEventListener('click', ev => {
-  const el = ev.target.closest('[data-tab],[data-grp],[data-open],[data-del],[data-close],[data-pay],[data-delpay],[data-act],#saveBtn');
+  const el = ev.target.closest('[data-tab],[data-grp],[data-open],[data-del],[data-close],[data-pay],[data-delpay],[data-act],[data-dgrp],[data-dact],#saveBtn');
   if (!el) return;
   if (el.dataset.close && ev.target !== el && !el.classList.contains('btn')) return;
   if (el.dataset.tab) return go(el.dataset.tab);
@@ -556,12 +610,24 @@ document.addEventListener('click', ev => {
     vibrate(6); return updateHint();
   }
   if (!isAdmin()) return; // everything below is admin-only (the server enforces this too)
+  if (el.dataset.dgrp === 'cat') { const f = state.dFilter, v = el.dataset.v; f.cats.has(v) ? f.cats.delete(v) : f.cats.add(v); drawDashFilter(); return drawDashBody(); }
+  if (el.dataset.dact === 'reset') { state.dFilter = newFilter(); drawDashFilter(); return drawDashBody(); }
   if (el.dataset.open) return openExpense(el.dataset.open);
   if (el.dataset.del) return deleteExpense(el.dataset.del);
   if (el.dataset.close) return closeSheet();
   if (el.dataset.pay) return markPaid(Number(el.dataset.pay));
   if (el.dataset.delpay) return undoPayment(el.dataset.delpay);
   if (el.dataset.act === 'csv') return exportCSV();
+});
+document.addEventListener('change', ev => {
+  const id = ev.target.id;
+  if (!isAdmin() || !['dFrom', 'dTo', 'dPaid', 'dShare'].includes(id)) return;
+  const f = state.dFilter, max = dashMaxDay(), v = ev.target.value;
+  if (id === 'dFrom') { f.from = Number(v); if ((f.to || max) < f.from) f.to = f.from >= max ? null : f.from; }
+  if (id === 'dTo') { f.to = Number(v) >= max ? null : Number(v); if (f.to && f.to < f.from) f.from = f.to; }
+  if (id === 'dPaid') f.paid = v;
+  if (id === 'dShare') f.share = v;
+  drawDashFilter(); drawDashBody();
 });
 document.addEventListener('input', ev => { if (ev.target.id === 'amt') { ev.target.style.width = Math.max(2, ev.target.value.length + 0.5) + 'ch'; updateHint(); } });
 
