@@ -146,6 +146,7 @@ td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
 .dfilter .chip{padding:7px 12px;font-size:14px}
 .fcount{color:var(--label2);font-size:13px}
 .fcount b{color:var(--label)}
+.fhint{flex-basis:100%;color:var(--label2);font-size:12.5px}
 .fright{margin-left:auto;display:flex;gap:12px;align-items:center}
 
 /* ---------- Sheets, toast ---------- */
@@ -231,7 +232,8 @@ function moneyR(n) {
 function todayISO() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 function fmtDate(iso) { const d = new Date(iso + 'T00:00:00'); return isNaN(d) ? iso : d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }); }
 function dayDate(d) {
-  const dt = new Date((state.data.settings.startDate || todayISO()) + 'T00:00:00');
+  if (!state.data.settings.startDate) return '?'; // server did not send Day 1 = old Apps Script deployment
+  const dt = new Date(state.data.settings.startDate + 'T00:00:00');
   if (isNaN(dt)) return '';
   dt.setDate(dt.getDate() + d - 1);
   return dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
@@ -315,6 +317,7 @@ $('#outBtn').onclick = () => signOut();
 function destroyCharts() { Object.values(state.charts).forEach(c => c.destroy()); state.charts = {}; }
 function setSub() {
   const s = state.data.settings;
+  if (isAdmin() && !s.startDate) { $('#tripSub').textContent = '⚠ Apps Script is not updated: redeploy it as a New version'; return; }
   $('#tripSub').textContent = isAdmin() ? `${s.tripName} · ${s.days} days · Day 1 = ${dayDate(1)}` : `Hi ${state.user.name} · ${s.tripName}`;
 }
 function go(tab) {
@@ -455,11 +458,13 @@ function drawDashFilter() {
   const people = (id, val, label) => `<label class="fsel"><span>${label}</span><select id="${id}"><option value="all">Everyone</option>${s.travellers.map(p => `<option value="${esc(p)}"${val === p ? ' selected' : ''}>${esc(p)}</option>`).join('')}</select></label>`;
   const cats = [...new Set([...s.categories, ...ex.map(e => e.category)])];
   const list = dashList();
+  const first = [...ex].sort((a, b) => a.date.localeCompare(b.date))[0];
   $('#dfilter').innerHTML =
     `<label class="fsel"><span>From</span><select id="dFrom">${days(f.from)}</select></label>
      <label class="fsel"><span>To</span><select id="dTo">${days(to)}</select></label>
      ${people('dPaid', f.paid, 'Paid by')}${people('dShare', f.share, 'Shared with')}
      <div class="chips">${cats.map(c => `<button type="button" class="chip${f.cats.has(c) ? ' on' : ''}" data-dgrp="cat" data-v="${esc(c)}">${icon(c)} ${esc(c)}</button>`).join('')}</div>
+     <div class="fhint">Day 1 = ${esc(dayDate(1))}, set by the earliest expense: “${esc(first.description)}” (${esc(first.date)})</div>
      <div class="fright"><span class="fcount">Showing <b>${list.length}</b> of ${ex.length} expenses</span>${dashActive() ? '<button type="button" class="btn small ghost" style="margin:0" data-dact="reset">Reset filters</button>' : ''}</div>`;
 }
 function drawDashBody() {
@@ -467,6 +472,7 @@ function drawDashBody() {
   const s = state.data.settings, f = state.dFilter, list = dashList(), max = dashMaxDay(), to = f.to || max;
   if (!list.length) { $('#dbody').innerHTML = `<div class="empty"><b>No expenses match these filters</b>Try a wider day range or clear a filter.</div>`; return; }
   const c = calc(list), full = calc(), n = s.travellers.length, daysUsed = Object.keys(c.byDay).length;
+  state.transfers = full.transfers;
   const toSettle = full.transfers.filter(t => t.to === s.mainPayer).reduce((a, t) => a + t.amount, 0);
   const kpi = [
     ['accent', 'Total spent', moneyR(c.total), `${list.length} expense${list.length > 1 ? 's' : ''}${dashActive() ? ' (filtered)' : ''}`],
@@ -488,7 +494,7 @@ function drawDashBody() {
       <div class="panel"><h2>Paid vs fair share <small>per person</small></h2><div class="chart"><canvas id="cPerson"></canvas></div></div>
     </section>
     <section class="row3">
-      <div class="panel"><h2>Settle up <small>all expenses · ↔ ${esc(s.mainPayer)}</small></h2><div class="pscroll">${full.transfers.length ? full.transfers.map(t => `<div class="stl"><div><b>${esc(t.from)}</b> pays <b>${esc(t.to)}</b><div class="s">${t.to === s.mainPayer ? 'owes the main payer' : 'gets money back'}</div></div><div class="${t.to === s.mainPayer ? 'neg' : 'pos'}" style="font-weight:600;font-size:18px">${money(r2(t.amount))}</div></div>`).join('') : '<div class="empty">All settled 🎉</div>'}</div></div>
+      <div class="panel"><h2>Settle up <small>all expenses · ↔ ${esc(s.mainPayer)}</small></h2><div class="pscroll">${full.transfers.length ? full.transfers.map((t, i) => `<div class="stl"><div><b>${esc(t.from)}</b> pays <b>${esc(t.to)}</b><div class="s">${t.to === s.mainPayer ? 'owes the main payer' : 'gets money back'}</div></div><div style="text-align:right"><div class="${t.to === s.mainPayer ? 'neg' : 'pos'}" style="font-weight:600;font-size:18px">${money(r2(t.amount))}</div><button class="btn small" style="margin:6px 0 0" data-pay="${i}">Mark paid</button></div></div>`).join('') : '<div class="empty">All settled 🎉</div>'}</div></div>
       <div class="panel"><h2>Latest expenses <small>${dashActive() ? 'filtered' : ''}</small></h2><div class="pscroll"><table><tr><th>Day</th><th>For</th><th>Paid by</th><th class="r">Amount</th></tr>${recent.map(e => `<tr><td><span class="pill">D${e.day}</span></td><td>${esc(e.description)}<div style="color:var(--label2);font-size:12px">${esc(e.category)} · ${esc(fmtDate(e.date))}${e.addedBy ? ' · by ' + esc(e.addedBy) : ''}</div></td><td>${esc(e.paidBy)}</td><td class="r">${money(e.amount)}</td></tr>`).join('')}</table></div></div>
       <div class="panel"><h2>Total spent so far <small>cumulative${dashActive() ? ', filtered' : ''}</small></h2><div class="chart"><canvas id="cCum"></canvas></div></div>
     </section></div>`;
@@ -583,7 +589,7 @@ function renderSettle() {
   html += c.transfers.length ? '<div class="list">' + c.transfers.map((t, i) => `<div class="row">
       <div class="ic">${t.to === s.mainPayer ? '➡️' : '⬅️'}</div>
       <div class="mid"><div class="t">${esc(t.from)} pays ${esc(t.to)}</div><div class="s">${t.to === s.mainPayer ? 'Owes the main payer' : 'Gets money back'}</div></div>
-      <div style="text-align:right"><div class="amt">${money(r2(t.amount))}</div><button class="btn small ghost" style="margin:4px 0 0" data-pay="${i}">Mark paid</button></div></div>`).join('') + '</div>'
+      <div style="text-align:right"><div class="amt">${money(r2(t.amount))}</div><button class="btn small" style="margin:6px 0 0" data-pay="${i}">Mark paid</button></div></div>`).join('') + '</div>'
     : `<div class="empty"><b>All settled 🎉</b>Nobody owes anything right now.</div>`;
   html += '<h3 class="gh">Balances</h3><div class="list">' + c.people.map(p => {
     const n = r2(c.net[p]);
@@ -597,7 +603,7 @@ function renderSettle() {
 async function markPaid(i) {
   const t = state.transfers[i]; if (!t) return;
   if (!confirm(`Record that ${t.from} paid ${t.to} ${money(r2(t.amount))}?`)) return;
-  try { const r = await api('addPayment', { payment: { from: t.from, to: t.to, amount: r2(t.amount), date: todayISO() } }); state.data.payments.push(r.payment); renderSettle(); vibrate(15); toast('Payment recorded'); }
+  try { const r = await api('addPayment', { payment: { from: t.from, to: t.to, amount: r2(t.amount), date: todayISO() } }); state.data.payments.push(r.payment); state.tab === 'dashboard' ? drawDashBody() : renderSettle(); vibrate(15); toast('Payment recorded'); }
   catch (e) { toast(e.message, true); }
 }
 async function undoPayment(id) {
