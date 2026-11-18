@@ -159,6 +159,31 @@ td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
 .toast{position:fixed;top:calc(env(safe-area-inset-top) + 12px);left:50%;transform:translate(-50%,-90px);background:var(--glass);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);box-shadow:0 8px 28px rgba(0,0,0,.22),inset 0 0 0 .5px var(--sep);padding:12px 20px;border-radius:999px;font-size:15px;font-weight:500;z-index:50;transition:transform .35s cubic-bezier(.2,.9,.3,1.2);max-width:90vw;text-align:center}
 .toast.show{transform:translate(-50%,0)}
 .toast.bad{color:var(--red)}
+/* ---------- Signed-in user badge (top right) ---------- */
+.rightcol{display:flex;flex-direction:column;align-items:flex-end;gap:6px;min-width:0}
+.ubadge{display:flex;align-items:center;gap:8px;max-width:min(58vw,260px);padding:4px 12px 4px 4px;border-radius:999px;background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:inset 0 0 0 .5px var(--sep);font-size:14px;font-weight:600;color:var(--label)}
+.ubadge .av{flex:0 0 28px;height:28px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#0A84FF,#5E5CE6);color:#fff;font-size:12px;font-weight:700}
+.ubadge .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.ubadge .rl{flex:0 0 auto;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--fill);color:var(--label2)}
+.ubadge .rl.admin{background:rgba(10,132,255,.15);color:var(--blue)}
+/* ---------- Activity log (admin) ---------- */
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--label2);opacity:.45;margin-right:6px;vertical-align:middle}
+.dot.on{background:var(--green);opacity:1}
+.ev{display:inline-block;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--fill);color:var(--label2);white-space:nowrap}
+.ev.ok{background:rgba(52,199,89,.16);color:var(--green)}
+.ev.bad{background:rgba(255,59,48,.14);color:var(--red)}
+.ev.info{background:rgba(10,132,255,.14);color:var(--blue)}
+.ev.warn{background:rgba(255,149,0,.16);color:var(--orange)}
+/* ---------- Activity log section inside the Dashboard ---------- */
+.dlog{margin-top:22px}
+.dlog-h{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:0 4px 12px}
+.dlog-h h2{margin:0;font-size:22px;font-weight:700;letter-spacing:-.01em}
+.dlog-grid{display:grid;grid-template-columns:1fr;gap:16px}
+.dlog .panel .row{padding:10px 0}
+.dlog .chips{margin-bottom:8px}
+.dlog .chip{padding:6px 12px;font-size:13.5px;background:var(--fill)}
+.dlog .chip.on{background:var(--blue)}
+@media (min-width:1100px){.dlog-grid{grid-template-columns:1fr 2fr}.dlog .pscroll{max-height:460px}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -184,10 +209,13 @@ td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
 <div id="app" hidden>
   <header class="top"><div class="top-in">
     <div><div class="sub" id="tripSub"></div><h1 id="title">Add expense</h1></div>
-    <div class="tools">
-      <button id="refreshBtn" aria-label="Refresh">↻</button>
-      <button id="themeBtn" aria-label="Change theme">◐</button>
-      <button id="outBtn">Sign out</button>
+    <div class="rightcol">
+      <div class="ubadge" id="userBadge" title=""><span class="av" id="ubAv"></span><span class="nm" id="ubName"></span><span class="rl" id="ubRole"></span></div>
+      <div class="tools">
+        <button id="refreshBtn" aria-label="Refresh">↻</button>
+        <button id="themeBtn" aria-label="Change theme">◐</button>
+        <button id="outBtn">Sign out</button>
+      </div>
     </div>
   </div></header>
   <main id="view"><div class="loading">Loading…</div></main>
@@ -196,6 +224,7 @@ td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
     <button class="tab" data-tab="dashboard"><svg viewBox="0 0 24 24"><path d="M5 20V11M12 20V4M19 20v-6"/></svg>Dashboard</button>
     <button class="tab" data-tab="history"><svg viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r=".6"/><circle cx="4" cy="12" r=".6"/><circle cx="4" cy="18" r=".6"/></svg>Expenses</button>
     <button class="tab" data-tab="settle"><svg viewBox="0 0 24 24"><path d="M4 8h14l-3-3M20 16H6l3 3"/></svg>Settle</button>
+    <button class="tab" data-tab="log"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Log</button>
   </nav>
 </div>
 <div id="sheetHost"></div>
@@ -211,8 +240,8 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbwehaut0Llbq6e6jHzQgqSK
 
 const $ = s => document.querySelector(s);
 const newFilter = () => ({ from: 1, to: null, cats: new Set(), paid: 'all', share: 'all' });
-const state = { dFilter: newFilter(), token: '', user: null, data: null, tab: 'add', dayFilter: 'all', form: { paidBy: '', category: '', split: new Set() }, saving: false, charts: {}, timer: null, transfers: [] };
-const TITLES = { add: 'Add expense', dashboard: 'Dashboard', history: 'Expenses', settle: 'Settle up' };
+const state = { dFilter: newFilter(), token: '', user: null, data: null, tab: 'add', dayFilter: 'all', form: { paidBy: '', category: '', split: new Set() }, saving: false, charts: {}, timer: null, transfers: [], logFilter: 'all', logData: null };
+const TITLES = { add: 'Add expense', dashboard: 'Dashboard', history: 'Expenses', settle: 'Settle up', log: 'Activity log' };
 const ICONS = { food: '🍽️', stay: '🏨', hotel: '🏨', transport: '🚕', taxi: '🚕', fuel: '⛽', tickets: '🎟️', shopping: '🛍️', activities: '🎡', drinks: '☕', other: '🧾' };
 const PALETTE = ['#0A84FF', '#30D158', '#FF9F0A', '#FF453A', '#BF5AF2', '#64D2FF', '#FFD60A', '#FF375F', '#5E5CE6', '#AC8E68'];
 
@@ -238,6 +267,7 @@ function dayDate(d) {
   dt.setDate(dt.getDate() + d - 1);
   return dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 }
+const dayWord = d => d <= 0 ? 'Before trip' : 'Day ' + d;
 function vibrate(ms = 10) { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} }
 let toastTimer;
 function toast(msg, bad) {
@@ -245,11 +275,19 @@ function toast(msg, bad) {
   clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
 }
 
+/* ---------------- Device (written to the Logs sheet) ---------------- */
+const DEVICE = (() => {
+  const ua = navigator.userAgent || '';
+  const os = /iPhone/.test(ua) ? 'iPhone' : /iPad/.test(ua) ? 'iPad' : /Android/.test(ua) ? 'Android' : /Windows/.test(ua) ? 'Windows' : /Mac OS X/.test(ua) ? 'Mac' : /Linux/.test(ua) ? 'Linux' : 'Device';
+  const br = /Edg\//.test(ua) ? 'Edge' : /OPR\//.test(ua) ? 'Opera' : /SamsungBrowser/.test(ua) ? 'Samsung' : /CriOS|Chrome\//.test(ua) ? 'Chrome' : /FxiOS|Firefox\//.test(ua) ? 'Firefox' : /Safari\//.test(ua) ? 'Safari' : 'Browser';
+  const app = (matchMedia('(display-mode: standalone)').matches || navigator.standalone) ? ' (app)' : '';
+  return os + ' · ' + br + app;
+})();
 /* ---------------- API ---------------- */
 async function api(action, payload = {}) {
   if (API_URL.includes('PASTE_YOUR')) throw new Error('App is not connected yet. Paste your Web App URL into index.html.');
   let res;
-  try { res = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action, token: state.token, ...payload }) }); }
+  try { res = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action, token: state.token, device: DEVICE, ...payload }) }); }
   catch (e) { throw new Error("Can't reach the server. Check your internet connection."); }
   let json;
   try { json = await res.json(); } catch (e) { throw new Error('Unexpected server reply. Check the Web App deployment settings.'); }
@@ -282,7 +320,18 @@ function showLogin(msg) {
   $('#app').hidden = true; $('#login').hidden = false; document.body.classList.remove('wide');
   $('#loginErr').textContent = msg || ''; $('#pw').value = ''; $('#loginBtn').disabled = false; $('#loginBtn').textContent = 'Sign in';
 }
+function showUser() {
+  const u = state.user; if (!u) return;
+  const name = u.name || u.username;
+  const ini = name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+  $('#ubAv').textContent = ini || '?';
+  $('#ubName').textContent = name;
+  $('#ubRole').textContent = u.role === 'admin' ? 'Admin' : 'User';
+  $('#ubRole').classList.toggle('admin', u.role === 'admin');
+  $('#userBadge').title = 'Signed in as ' + name + ' (@' + u.username + ')';
+}
 function signOut(msg) {
+  state.logData = null; state.logFilter = 'all';
   state.token = ''; state.user = null; state.data = null;
   localStorage.removeItem('ts_token'); sessionStorage.removeItem('ts_token');
   showLogin(typeof msg === 'string' ? msg : '');
@@ -296,6 +345,7 @@ async function bootstrap(silent) {
 function enterApp() {
   $('#login').hidden = true; $('#app').hidden = false;
   $('#tabbar').hidden = !isAdmin();
+  showUser();
   document.body.classList.toggle('nobar', !isAdmin());
   go(isAdmin() && matchMedia('(min-width:1100px)').matches ? 'dashboard' : 'add');
   clearInterval(state.timer);
@@ -311,7 +361,10 @@ $('#loginForm').addEventListener('submit', async ev => {
     await bootstrap(false);
   } catch (e) { state.token = ''; showLogin(e.message); }
 });
-$('#outBtn').onclick = () => signOut();
+$('#outBtn').onclick = () => {
+  if (state.token) api('logout').catch(() => {}); // records LOGOUT in the Logs sheet (does not wait)
+  signOut();
+};
 
 /* ---------------- Navigation ---------------- */
 function destroyCharts() { Object.values(state.charts).forEach(c => c.destroy()); state.charts = {}; }
@@ -327,7 +380,7 @@ function go(tab) {
   document.body.classList.toggle('wide', tab === 'dashboard');
   $('#title').textContent = TITLES[tab];
   setSub();
-  ({ add: renderAdd, dashboard: renderDashboard, history: renderHistory, settle: renderSettle })[tab]();
+  ({ add: renderAdd, dashboard: renderDashboard, history: renderHistory, settle: renderSettle, log: renderLog })[tab]();
   window.scrollTo(0, 0);
 }
 async function refresh(silent) {
@@ -354,7 +407,8 @@ function calc(exps) {
     total += amt; ensure(e.paidBy); paid[e.paidBy] += amt;
     split.forEach(p => { ensure(p); share[p] += amt / split.length; });
     byCat[e.category] = (byCat[e.category] || 0) + amt;
-    byDay[e.day] = (byDay[e.day] || 0) + amt;
+    const dk = e.day <= 0 ? 0 : e.day;
+    byDay[dk] = (byDay[dk] || 0) + amt;
     if (!biggest || amt > biggest.amount) biggest = e;
   });
   const people = Object.keys(paid);
@@ -433,7 +487,7 @@ function dashActive() {
 }
 function dashList() {
   const f = state.dFilter, s = state.data.settings, to = f.to || dashMaxDay();
-  return state.data.expenses.filter(e => e.day >= f.from && e.day <= to
+  return state.data.expenses.filter(e => (f.from === 1 || e.day >= f.from) && e.day <= to
     && (!f.cats.size || f.cats.has(e.category))
     && (f.paid === 'all' || e.paidBy === f.paid)
     && (f.share === 'all' || (e.split.length ? e.split : s.travellers).includes(f.share)));
@@ -441,7 +495,7 @@ function dashList() {
 function renderDashboard() {
   destroyCharts();
   const s = state.data.settings, ex = state.data.expenses, f = state.dFilter;
-  if (!ex.length) { $('#view').innerHTML = `<div class="empty"><b>No expenses yet</b>The dashboard fills up as soon as the first expense is added.</div>`; return; }
+  if (!ex.length) { $('#view').innerHTML = `<div class="empty"><b>No expenses yet</b>The dashboard fills up as soon as the first expense is added.</div><section id="dlog" class="dlog"></section>`; loadDashLog(); return; }
   const known = new Set([...s.categories, ...ex.map(e => e.category)]);
   f.cats = new Set([...f.cats].filter(c => known.has(c)));
   if (f.paid !== 'all' && !s.travellers.includes(f.paid)) f.paid = 'all';
@@ -449,8 +503,8 @@ function renderDashboard() {
   const max = dashMaxDay();
   if (f.from > max) f.from = 1;
   if (f.to && f.to >= max) f.to = null;
-  $('#view').innerHTML = '<div id="dfilter" class="dfilter"></div><div id="dbody"></div>';
-  drawDashFilter(); drawDashBody();
+  $('#view').innerHTML = '<div id="dfilter" class="dfilter"></div><div id="dbody"></div><section id="dlog" class="dlog"></section>';
+  drawDashFilter(); drawDashBody(); loadDashLog();
 }
 function drawDashFilter() {
   const s = state.data.settings, ex = state.data.expenses, f = state.dFilter, max = dashMaxDay(), to = f.to || max;
@@ -464,7 +518,7 @@ function drawDashFilter() {
      <label class="fsel"><span>To</span><select id="dTo">${days(to)}</select></label>
      ${people('dPaid', f.paid, 'Paid by')}${people('dShare', f.share, 'Shared with')}
      <div class="chips">${cats.map(c => `<button type="button" class="chip${f.cats.has(c) ? ' on' : ''}" data-dgrp="cat" data-v="${esc(c)}">${icon(c)} ${esc(c)}</button>`).join('')}</div>
-     <div class="fhint">Day 1 = ${esc(dayDate(1))}, set by the earliest expense: “${esc(first.description)}” (${esc(first.date)})</div>
+     <div class="fhint">${s.startManual ? `Day 1 = ${esc(dayDate(1))}, from the Start date in Settings` : `Day 1 = ${esc(dayDate(1))}, set by the earliest expense: “${esc(first.description)}” (${esc(first.date)})`}</div>
      <div class="fright"><span class="fcount">Showing <b>${list.length}</b> of ${ex.length} expenses</span>${dashActive() ? '<button type="button" class="btn small ghost" style="margin:0" data-dact="reset">Reset filters</button>' : ''}</div>`;
 }
 function drawDashBody() {
@@ -495,7 +549,7 @@ function drawDashBody() {
     </section>
     <section class="row3">
       <div class="panel"><h2>Settle up <small>all expenses · ↔ ${esc(s.mainPayer)}</small></h2><div class="pscroll">${full.transfers.length ? full.transfers.map((t, i) => `<div class="stl"><div><b>${esc(t.from)}</b> pays <b>${esc(t.to)}</b><div class="s">${t.to === s.mainPayer ? 'owes the main payer' : 'gets money back'}</div></div><div style="text-align:right"><div class="${t.to === s.mainPayer ? 'neg' : 'pos'}" style="font-weight:600;font-size:18px">${money(r2(t.amount))}</div><button class="btn small" style="margin:6px 0 0" data-pay="${i}">Mark paid</button></div></div>`).join('') : '<div class="empty">All settled 🎉</div>'}</div></div>
-      <div class="panel"><h2>Latest expenses <small>${dashActive() ? 'filtered' : ''}</small></h2><div class="pscroll"><table><tr><th>Day</th><th>For</th><th>Paid by</th><th class="r">Amount</th></tr>${recent.map(e => `<tr><td><span class="pill">D${e.day}</span></td><td>${esc(e.description)}<div style="color:var(--label2);font-size:12px">${esc(e.category)} · ${esc(fmtDate(e.date))}${e.addedBy ? ' · by ' + esc(e.addedBy) : ''}</div></td><td>${esc(e.paidBy)}</td><td class="r">${money(e.amount)}</td></tr>`).join('')}</table></div></div>
+      <div class="panel"><h2>Latest expenses <small>${dashActive() ? 'filtered' : ''}</small></h2><div class="pscroll"><table><tr><th>Day</th><th>For</th><th>Paid by</th><th class="r">Amount</th></tr>${recent.map(e => `<tr><td><span class="pill">${e.day <= 0 ? 'Pre' : 'D' + e.day}</span></td><td>${esc(e.description)}<div style="color:var(--label2);font-size:12px">${esc(e.category)} · ${esc(fmtDate(e.date))}${e.addedBy ? ' · by ' + esc(e.addedBy) : ''}</div></td><td>${esc(e.paidBy)}</td><td class="r">${money(e.amount)}</td></tr>`).join('')}</table></div></div>
       <div class="panel"><h2>Total spent so far <small>cumulative${dashActive() ? ', filtered' : ''}</small></h2><div class="chart"><canvas id="cCum"></canvas></div></div>
     </section></div>`;
 
@@ -507,8 +561,8 @@ function drawDashBody() {
   mkChart('cCat', { type: 'doughnut',
     data: { labels: cats.map(x => x[0]), datasets: [{ data: cats.map(x => r2(x[1])), backgroundColor: cats.map((_, i) => PALETTE[i % PALETTE.length]), borderColor: card, borderWidth: 3 }] },
     options: { maintainAspectRatio: false, cutout: '62%', plugins: { legend: { position: 'right', labels: { usePointStyle: true, padding: 12 } }, tooltip: { callbacks: { label: t => ` ${t.label}: ${money(t.raw)} (${(t.raw / c.total * 100).toFixed(1)}%)` } } } } });
-  const dayNums = Array.from({ length: to - f.from + 1 }, (_, i) => f.from + i);
-  const dayLabels = dayNums.map(d => ['D' + d, dayDate(d)]);
+  const dayNums = [...(c.byDay[0] !== undefined && f.from === 1 ? [0] : []), ...Array.from({ length: to - f.from + 1 }, (_, i) => f.from + i)];
+  const dayLabels = dayNums.map(d => d <= 0 ? ['Before', 'trip'] : ['D' + d, dayDate(d)]);
   const avgDay = c.total / daysUsed;
   mkChart('cDay', { type: 'bar',
     data: { labels: dayLabels, datasets: [
@@ -535,16 +589,16 @@ function renderHistory() {
   const s = state.data.settings;
   const maxDay = Math.max(s.days, ...state.data.expenses.map(e => e.day || 0));
   const days = Array.from({ length: maxDay }, (_, i) => i + 1);
-  const list = state.data.expenses.filter(e => state.dayFilter === 'all' || e.day === state.dayFilter)
+  const list = state.data.expenses.filter(e => state.dayFilter === 'all' || (state.dayFilter === 0 ? e.day <= 0 : e.day === state.dayFilter))
     .sort((a, b) => b.date.localeCompare(a.date) || (b.added || '').localeCompare(a.added || ''));
   const groups = {}; list.forEach(e => (groups[e.date] = groups[e.date] || []).push(e));
-  let html = `<div class="scroll">${chip('day', 'all', state.dayFilter === 'all', 'All days') + days.map(d => chip('day', d, state.dayFilter === d, 'Day ' + d + ' · ' + dayDate(d))).join('')}</div>`;
+  let html = `<div class="scroll">${chip('day', 'all', state.dayFilter === 'all', 'All days') + (state.data.expenses.some(e => e.day <= 0) ? chip('day', 0, state.dayFilter === 0, 'Before trip') : '') + days.map(d => chip('day', d, state.dayFilter === d, 'Day ' + d + ' · ' + dayDate(d))).join('')}</div>`;
   if (list.length) {
     const tot = list.reduce((a, e) => a + e.amount, 0);
-    html += `<div class="card hero"><div class="big">${money(tot)}</div><div class="s">${list.length} expense${list.length > 1 ? 's' : ''}${state.dayFilter === 'all' ? '' : ' on day ' + state.dayFilter}</div></div>`;
+    html += `<div class="card hero"><div class="big">${money(tot)}</div><div class="s">${list.length} expense${list.length > 1 ? 's' : ''}${state.dayFilter === 'all' ? '' : state.dayFilter === 0 ? ' before the trip' : ' on day ' + state.dayFilter}</div></div>`;
     Object.keys(groups).forEach(d => {
       const g = groups[d];
-      html += `<div class="dayhead"><span>Day ${g[0].day} · ${esc(fmtDate(d))}</span><span>${money(g.reduce((a, e) => a + e.amount, 0))}</span></div><div class="list">` +
+      html += `<div class="dayhead"><span>${dayWord(g[0].day)} · ${esc(fmtDate(d))}</span><span>${money(g.reduce((a, e) => a + e.amount, 0))}</span></div><div class="list">` +
         g.map(e => `<button class="row" data-open="${esc(e.id)}"><div class="ic">${icon(e.category)}</div><div class="mid"><div class="t">${esc(e.description)}</div>
           <div class="s">${esc(e.paidBy)} paid · split ${e.split.length || s.travellers.length}${e.location ? ' · ' + esc(e.location) : ''}</div></div><div class="amt">${money(e.amount)}</div></button>`).join('') + '</div>';
     });
@@ -559,7 +613,7 @@ function openExpense(id) {
   const who = e.split.length ? e.split : state.data.settings.travellers;
   openSheet(`<div class="card hero"><div class="ic" style="margin:0 auto 8px;width:52px;height:52px;font-size:26px">${icon(e.category)}</div><div class="big">${money(e.amount)}</div><div class="s">${esc(e.description)}</div></div>
     <div class="list">
-      <div class="kv"><span>Date</span><span>Day ${e.day} · ${esc(fmtDate(e.date))}</span></div>
+      <div class="kv"><span>Date</span><span>${dayWord(e.day)} · ${esc(fmtDate(e.date))}</span></div>
       <div class="kv"><span>Category</span><span>${esc(e.category)}</span></div>
       <div class="kv"><span>Paid by</span><span>${esc(e.paidBy)}</span></div>
       <div class="kv"><span>Split between</span><span>${esc(who.join(', '))}</span></div>
@@ -612,9 +666,73 @@ async function undoPayment(id) {
   catch (e) { toast(e.message, true); }
 }
 
+/* ---------------- ACTIVITY LOG (admin) ---------------- */
+const EV_LABEL = { LOGIN: ['Signed in', 'ok'], OPEN: ['Opened app', 'info'], LOGOUT: ['Signed out', ''], LOGIN_FAILED: ['Failed sign-in', 'bad'], LOGIN_BLOCKED: ['Blocked', 'bad'], ADD_EXPENSE: ['Added expense', 'info'], DELETE_EXPENSE: ['Deleted expense', 'warn'], ADD_PAYMENT: ['Payment', 'ok'], DELETE_PAYMENT: ['Payment undone', 'warn'], USER_SAVED: ['User saved', ''] };
+const LOG_GROUPS = { all: null, logins: ['LOGIN', 'LOGOUT', 'OPEN'], failed: ['LOGIN_FAILED', 'LOGIN_BLOCKED'], changes: ['ADD_EXPENSE', 'DELETE_EXPENSE', 'ADD_PAYMENT', 'DELETE_PAYMENT', 'USER_SAVED'] };
+function ago(t) {
+  if (!t) return 'never';
+  const m = Math.round((Date.now() - t) / 60000);
+  if (m < 1) return 'just now'; if (m < 60) return m + ' min ago';
+  const h = Math.round(m / 60); if (h < 24) return h + ' h ago';
+  const d = Math.round(h / 24); return d + ' day' + (d > 1 ? 's' : '') + ' ago';
+}
+function logParts() {
+  const d = state.logData;
+  const users = [...d.users].sort((a, b) => ((d.lastSeen[b.username] || {}).t || 0) - ((d.lastSeen[a.username] || {}).t || 0));
+  const online = u => { const ls = d.lastSeen[u.username]; return !!ls && ls.event !== 'LOGOUT' && Date.now() - ls.t < 30 * 60000; };
+  const nOn = users.filter(online).length;
+  const usersHtml = users.length ? users.map(u => {
+    const ls = d.lastSeen[u.username], on = online(u);
+    return `<div class="row"><div class="ic">👤</div><div class="mid"><div class="t"><span class="dot${on ? ' on' : ''}"></span>${esc(u.name)}${u.username === state.user.username ? ' (you)' : ''}</div>
+      <div class="s">@${esc(u.username)} · ${u.role === 'admin' ? 'Admin' : 'User'}${u.active ? '' : ' · disabled'} · ${ls ? (EV_LABEL[ls.event] || [ls.event])[0].toLowerCase() + ' ' + ago(ls.t) : 'never signed in'}</div></div></div>`;
+  }).join('') : '<div class="empty">No users</div>';
+  const grp = LOG_GROUPS[state.logFilter];
+  const rows = d.logs.filter(l => !grp || grp.includes(l.event));
+  const chips = [['all', 'All'], ['logins', 'Sign-ins'], ['failed', 'Failed'], ['changes', 'Changes']].map(([k, t]) => `<button type="button" class="chip${state.logFilter === k ? ' on' : ''}" data-lf="${k}">${t}</button>`).join('');
+  const rowsHtml = rows.length ? rows.map(l => {
+    const ev = EV_LABEL[l.event] || [l.event, ''];
+    return `<div class="row"><div class="mid"><div class="t">${esc(l.name || l.username || '—')} <span class="ev ${ev[1]}">${esc(ev[0])}</span></div>
+      <div class="s">${esc(l.time)}${l.details ? ' · ' + esc(l.details) : ''}</div></div></div>`;
+  }).join('') : '<div class="empty"><b>Nothing here yet</b>No matching activity.</div>';
+  return { nOn, usersHtml, chips, rowsHtml };
+}
+/* Log tab */
+async function renderLog() {
+  $('#view').innerHTML = '<div class="loading">Loading activity…</div>';
+  try { state.logData = await api('getLogs'); }
+  catch (e) { $('#view').innerHTML = `<div class="empty"><b>Could not load the log</b>${esc(e.message)}</div>`; return; }
+  if (state.tab === 'log') drawLog();
+}
+function drawLog() {
+  if (!state.logData) return;
+  const p = logParts();
+  $('#view').innerHTML = `<h3 class="gh">Users · ${p.nOn} active in the last 30 min</h3><div class="list">${p.usersHtml}</div>
+    <h3 class="gh">Recent activity<small>Latest 400 entries · full history is in the Logs sheet</small></h3>
+    <div class="scroll">${p.chips}</div>${p.rowsHtml.startsWith('<div class="empty"') ? p.rowsHtml : '<div class="list">' + p.rowsHtml + '</div>'}
+    <button class="btn ghost" type="button" data-act="logreload">Reload log</button>`;
+}
+/* Separate Activity log section inside the Dashboard tab */
+async function loadDashLog() {
+  const box = $('#dlog'); if (!box) return;
+  if (!state.logData) box.innerHTML = '<div class="dlog-h"><h2>Activity log</h2></div><div class="panel"><div class="loading" style="padding:30px 0">Loading activity…</div></div>';
+  else drawDashLog();
+  try { state.logData = await api('getLogs'); }
+  catch (e) { if ($('#dlog')) $('#dlog').innerHTML = `<div class="dlog-h"><h2>Activity log</h2></div><div class="panel"><div class="empty"><b>Could not load the log</b>${esc(e.message)}</div></div>`; return; }
+  if (state.tab === 'dashboard') drawDashLog();
+}
+function drawDashLog() {
+  const box = $('#dlog'); if (!box || !state.logData) return;
+  const p = logParts();
+  box.innerHTML = `<div class="dlog-h"><h2>Activity log</h2><button type="button" class="btn small ghost" style="margin:0" data-act="logreload">↻ Reload log</button></div>
+    <div class="dlog-grid">
+      <div class="panel"><h2>Users <small>${p.nOn} active in the last 30 min</small></h2><div class="pscroll">${p.usersHtml}</div></div>
+      <div class="panel"><h2>Recent activity <small>latest 400 · full history in the Logs sheet</small></h2><div class="chips">${p.chips}</div><div class="pscroll">${p.rowsHtml}</div></div>
+    </div>`;
+}
+
 /* ---------------- Events ---------------- */
 document.addEventListener('click', ev => {
-  const el = ev.target.closest('[data-tab],[data-grp],[data-open],[data-del],[data-close],[data-pay],[data-delpay],[data-act],[data-dgrp],[data-dact],#saveBtn');
+  const el = ev.target.closest('[data-lf],[data-tab],[data-grp],[data-open],[data-del],[data-close],[data-pay],[data-delpay],[data-act],[data-dgrp],[data-dact],#saveBtn');
   if (!el) return;
   if (el.dataset.close && ev.target !== el && !el.classList.contains('btn')) return;
   if (el.dataset.tab) return go(el.dataset.tab);
@@ -637,6 +755,8 @@ document.addEventListener('click', ev => {
   if (el.dataset.pay) return markPaid(Number(el.dataset.pay));
   if (el.dataset.delpay) return undoPayment(el.dataset.delpay);
   if (el.dataset.act === 'csv') return exportCSV();
+  if (el.dataset.lf) { state.logFilter = el.dataset.lf; return state.tab === 'dashboard' ? drawDashLog() : drawLog(); }
+  if (el.dataset.act === 'logreload') return state.tab === 'dashboard' ? loadDashLog() : renderLog();
 });
 document.addEventListener('change', ev => {
   const id = ev.target.id;
