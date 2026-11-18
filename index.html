@@ -62,7 +62,7 @@ main{max-width:560px;margin:0 auto;padding:6px 16px calc(120px + env(safe-area-i
 body.wide main{max-width:none;padding-left:28px;padding-right:28px}
 body.nobar main{padding-bottom:calc(40px + env(safe-area-inset-bottom))}
 
-.tabbar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 10px);width:min(92vw,460px);display:flex;padding:6px;border-radius:34px;background:var(--glass);backdrop-filter:blur(26px) saturate(180%);-webkit-backdrop-filter:blur(26px) saturate(180%);box-shadow:0 10px 34px rgba(0,0,0,.2),inset 0 0 0 .5px var(--sep);z-index:10}
+.tabbar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 10px);width:min(94vw,540px);display:flex;padding:6px;border-radius:34px;background:var(--glass);backdrop-filter:blur(26px) saturate(180%);-webkit-backdrop-filter:blur(26px) saturate(180%);box-shadow:0 10px 34px rgba(0,0,0,.2),inset 0 0 0 .5px var(--sep);z-index:10}
 .tab{flex:1;border:0;background:none;color:var(--label2);display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 0 6px;border-radius:28px;font-size:10.5px;font-weight:500;transition:background .2s,color .2s}
 .tab svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .tab.on{color:var(--blue);background:var(--fill)}
@@ -149,6 +149,21 @@ td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
 .fhint{flex-basis:100%;color:var(--label2);font-size:12.5px}
 .fright{margin-left:auto;display:flex;gap:12px;align-items:center}
 
+/* ---------- Who is signed in + log ---------- */
+.right{display:flex;flex-direction:column;align-items:flex-end;gap:8px;min-width:0}
+.who{display:flex;align-items:center;gap:8px;max-width:62vw;background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius:999px;padding:4px 12px 4px 4px;box-shadow:inset 0 0 0 .5px var(--sep);font-size:14px}
+.who i{flex:0 0 26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#0A84FF,#5E5CE6);color:#fff;font-style:normal;font-weight:600;display:grid;place-items:center;font-size:13px}
+.who span{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.badge{display:inline-block;font-size:11px;font-weight:500;padding:1px 8px;border-radius:999px;background:var(--fill);color:var(--label2);vertical-align:1px}
+.badge.admin{background:rgba(10,132,255,.16);color:var(--blue)}
+.who .badge{margin-left:2px}
+.dot{flex:0 0 10px;height:10px;border-radius:50%;background:var(--fill)}
+.dot.on{background:var(--green);box-shadow:0 0 0 4px rgba(48,209,88,.22)}
+.s.wrap{white-space:normal}
+.lgbar{display:flex;gap:10px;align-items:center;margin:2px 0 12px}
+.lgbar select{border:0;background:var(--card);color:var(--label);border-radius:999px;padding:8px 12px;font-size:14px;outline:none}
+.note{color:var(--label2);font-size:12.5px;text-align:center;margin:6px 8px 0}
+
 /* ---------- Sheets, toast ---------- */
 .sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.42);z-index:30;display:flex;align-items:flex-end;justify-content:center}
 .sheet{width:100%;max-width:560px;background:var(--bg);border-radius:28px 28px 0 0;padding:10px 16px calc(20px + env(safe-area-inset-bottom));max-height:88vh;overflow:auto;animation:up .25s ease-out}
@@ -159,31 +174,6 @@ td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
 .toast{position:fixed;top:calc(env(safe-area-inset-top) + 12px);left:50%;transform:translate(-50%,-90px);background:var(--glass);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);box-shadow:0 8px 28px rgba(0,0,0,.22),inset 0 0 0 .5px var(--sep);padding:12px 20px;border-radius:999px;font-size:15px;font-weight:500;z-index:50;transition:transform .35s cubic-bezier(.2,.9,.3,1.2);max-width:90vw;text-align:center}
 .toast.show{transform:translate(-50%,0)}
 .toast.bad{color:var(--red)}
-/* ---------- Signed-in user badge (top right) ---------- */
-.rightcol{display:flex;flex-direction:column;align-items:flex-end;gap:6px;min-width:0}
-.ubadge{display:flex;align-items:center;gap:8px;max-width:min(58vw,260px);padding:4px 12px 4px 4px;border-radius:999px;background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:inset 0 0 0 .5px var(--sep);font-size:14px;font-weight:600;color:var(--label)}
-.ubadge .av{flex:0 0 28px;height:28px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#0A84FF,#5E5CE6);color:#fff;font-size:12px;font-weight:700}
-.ubadge .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
-.ubadge .rl{flex:0 0 auto;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--fill);color:var(--label2)}
-.ubadge .rl.admin{background:rgba(10,132,255,.15);color:var(--blue)}
-/* ---------- Activity log (admin) ---------- */
-.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--label2);opacity:.45;margin-right:6px;vertical-align:middle}
-.dot.on{background:var(--green);opacity:1}
-.ev{display:inline-block;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--fill);color:var(--label2);white-space:nowrap}
-.ev.ok{background:rgba(52,199,89,.16);color:var(--green)}
-.ev.bad{background:rgba(255,59,48,.14);color:var(--red)}
-.ev.info{background:rgba(10,132,255,.14);color:var(--blue)}
-.ev.warn{background:rgba(255,149,0,.16);color:var(--orange)}
-/* ---------- Activity log section inside the Dashboard ---------- */
-.dlog{margin-top:22px}
-.dlog-h{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:0 4px 12px}
-.dlog-h h2{margin:0;font-size:22px;font-weight:700;letter-spacing:-.01em}
-.dlog-grid{display:grid;grid-template-columns:1fr;gap:16px}
-.dlog .panel .row{padding:10px 0}
-.dlog .chips{margin-bottom:8px}
-.dlog .chip{padding:6px 12px;font-size:13.5px;background:var(--fill)}
-.dlog .chip.on{background:var(--blue)}
-@media (min-width:1100px){.dlog-grid{grid-template-columns:1fr 2fr}.dlog .pscroll{max-height:460px}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -209,8 +199,8 @@ td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
 <div id="app" hidden>
   <header class="top"><div class="top-in">
     <div><div class="sub" id="tripSub"></div><h1 id="title">Add expense</h1></div>
-    <div class="rightcol">
-      <div class="ubadge" id="userBadge" title=""><span class="av" id="ubAv"></span><span class="nm" id="ubName"></span><span class="rl" id="ubRole"></span></div>
+    <div class="right">
+      <div class="who" id="who" hidden><i id="whoI"></i><span id="whoN"></span><span class="badge" id="whoR"></span></div>
       <div class="tools">
         <button id="refreshBtn" aria-label="Refresh">↻</button>
         <button id="themeBtn" aria-label="Change theme">◐</button>
@@ -224,7 +214,7 @@ td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
     <button class="tab" data-tab="dashboard"><svg viewBox="0 0 24 24"><path d="M5 20V11M12 20V4M19 20v-6"/></svg>Dashboard</button>
     <button class="tab" data-tab="history"><svg viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r=".6"/><circle cx="4" cy="12" r=".6"/><circle cx="4" cy="18" r=".6"/></svg>Expenses</button>
     <button class="tab" data-tab="settle"><svg viewBox="0 0 24 24"><path d="M4 8h14l-3-3M20 16H6l3 3"/></svg>Settle</button>
-    <button class="tab" data-tab="log"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Log</button>
+    <button class="tab" data-tab="logs"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Logs</button>
   </nav>
 </div>
 <div id="sheetHost"></div>
@@ -240,8 +230,8 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbwehaut0Llbq6e6jHzQgqSK
 
 const $ = s => document.querySelector(s);
 const newFilter = () => ({ from: 1, to: null, cats: new Set(), paid: 'all', share: 'all' });
-const state = { dFilter: newFilter(), token: '', user: null, data: null, tab: 'add', dayFilter: 'all', form: { paidBy: '', category: '', split: new Set() }, saving: false, charts: {}, timer: null, transfers: [], logFilter: 'all', logData: null };
-const TITLES = { add: 'Add expense', dashboard: 'Dashboard', history: 'Expenses', settle: 'Settle up', log: 'Activity log' };
+const state = { logs: null, logFilter: { kind: 'all', user: 'all' }, dFilter: newFilter(), token: '', user: null, data: null, tab: 'add', dayFilter: 'all', form: { paidBy: '', category: '', split: new Set() }, saving: false, charts: {}, timer: null, transfers: [] };
+const TITLES = { add: 'Add expense', dashboard: 'Dashboard', history: 'Expenses', settle: 'Settle up', logs: 'Activity log' };
 const ICONS = { food: '🍽️', stay: '🏨', hotel: '🏨', transport: '🚕', taxi: '🚕', fuel: '⛽', tickets: '🎟️', shopping: '🛍️', activities: '🎡', drinks: '☕', other: '🧾' };
 const PALETTE = ['#0A84FF', '#30D158', '#FF9F0A', '#FF453A', '#BF5AF2', '#64D2FF', '#FFD60A', '#FF375F', '#5E5CE6', '#AC8E68'];
 
@@ -275,19 +265,18 @@ function toast(msg, bad) {
   clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
 }
 
-/* ---------------- Device (written to the Logs sheet) ---------------- */
-const DEVICE = (() => {
-  const ua = navigator.userAgent || '';
-  const os = /iPhone/.test(ua) ? 'iPhone' : /iPad/.test(ua) ? 'iPad' : /Android/.test(ua) ? 'Android' : /Windows/.test(ua) ? 'Windows' : /Mac OS X/.test(ua) ? 'Mac' : /Linux/.test(ua) ? 'Linux' : 'Device';
-  const br = /Edg\//.test(ua) ? 'Edge' : /OPR\//.test(ua) ? 'Opera' : /SamsungBrowser/.test(ua) ? 'Samsung' : /CriOS|Chrome\//.test(ua) ? 'Chrome' : /FxiOS|Firefox\//.test(ua) ? 'Firefox' : /Safari\//.test(ua) ? 'Safari' : 'Browser';
-  const app = (matchMedia('(display-mode: standalone)').matches || navigator.standalone) ? ' (app)' : '';
-  return os + ' · ' + br + app;
-})();
+function deviceLabel() {
+  const u = navigator.userAgent;
+  const os = /iPhone/.test(u) ? 'iPhone' : /iPad/.test(u) ? 'iPad' : /Android/.test(u) ? 'Android' : /Windows/.test(u) ? 'Windows' : /Mac/.test(u) ? 'Mac' : /Linux/.test(u) ? 'Linux' : 'Device';
+  const br = /Edg\//.test(u) ? 'Edge' : /OPR\//.test(u) ? 'Opera' : /Firefox\//.test(u) ? 'Firefox' : /Chrome\//.test(u) ? 'Chrome' : /Safari\//.test(u) ? 'Safari' : '';
+  return (os + (br ? ' · ' + br : '')).slice(0, 40);
+}
+
 /* ---------------- API ---------------- */
 async function api(action, payload = {}) {
   if (API_URL.includes('PASTE_YOUR')) throw new Error('App is not connected yet. Paste your Web App URL into index.html.');
   let res;
-  try { res = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action, token: state.token, device: DEVICE, ...payload }) }); }
+  try { res = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action, token: state.token, device: deviceLabel(), ...payload }) }); }
   catch (e) { throw new Error("Can't reach the server. Check your internet connection."); }
   let json;
   try { json = await res.json(); } catch (e) { throw new Error('Unexpected server reply. Check the Web App deployment settings.'); }
@@ -320,18 +309,7 @@ function showLogin(msg) {
   $('#app').hidden = true; $('#login').hidden = false; document.body.classList.remove('wide');
   $('#loginErr').textContent = msg || ''; $('#pw').value = ''; $('#loginBtn').disabled = false; $('#loginBtn').textContent = 'Sign in';
 }
-function showUser() {
-  const u = state.user; if (!u) return;
-  const name = u.name || u.username;
-  const ini = name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
-  $('#ubAv').textContent = ini || '?';
-  $('#ubName').textContent = name;
-  $('#ubRole').textContent = u.role === 'admin' ? 'Admin' : 'User';
-  $('#ubRole').classList.toggle('admin', u.role === 'admin');
-  $('#userBadge').title = 'Signed in as ' + name + ' (@' + u.username + ')';
-}
 function signOut(msg) {
-  state.logData = null; state.logFilter = 'all';
   state.token = ''; state.user = null; state.data = null;
   localStorage.removeItem('ts_token'); sessionStorage.removeItem('ts_token');
   showLogin(typeof msg === 'string' ? msg : '');
@@ -345,7 +323,6 @@ async function bootstrap(silent) {
 function enterApp() {
   $('#login').hidden = true; $('#app').hidden = false;
   $('#tabbar').hidden = !isAdmin();
-  showUser();
   document.body.classList.toggle('nobar', !isAdmin());
   go(isAdmin() && matchMedia('(min-width:1100px)').matches ? 'dashboard' : 'add');
   clearInterval(state.timer);
@@ -361,14 +338,19 @@ $('#loginForm').addEventListener('submit', async ev => {
     await bootstrap(false);
   } catch (e) { state.token = ''; showLogin(e.message); }
 });
-$('#outBtn').onclick = () => {
-  if (state.token) api('logout').catch(() => {}); // records LOGOUT in the Logs sheet (does not wait)
-  signOut();
-};
+$('#outBtn').onclick = () => { if (state.token) api('logout').catch(() => {}); signOut(); };
 
 /* ---------------- Navigation ---------------- */
 function destroyCharts() { Object.values(state.charts).forEach(c => c.destroy()); state.charts = {}; }
+function setWho() {
+  const u = state.user; if (!u) return;
+  $('#who').hidden = false;
+  $('#whoI').textContent = (u.name || u.username || '?').trim().charAt(0).toUpperCase();
+  $('#whoN').textContent = u.name || u.username;
+  const r = $('#whoR'); r.textContent = u.role === 'admin' ? 'Admin' : 'User'; r.className = 'badge' + (u.role === 'admin' ? ' admin' : '');
+}
 function setSub() {
+  setWho();
   const s = state.data.settings;
   if (isAdmin() && !s.startDate) { $('#tripSub').textContent = '⚠ Apps Script is not updated: redeploy it as a New version'; return; }
   $('#tripSub').textContent = isAdmin() ? `${s.tripName} · ${s.days} days · Day 1 = ${dayDate(1)}` : `Hi ${state.user.name} · ${s.tripName}`;
@@ -380,7 +362,7 @@ function go(tab) {
   document.body.classList.toggle('wide', tab === 'dashboard');
   $('#title').textContent = TITLES[tab];
   setSub();
-  ({ add: renderAdd, dashboard: renderDashboard, history: renderHistory, settle: renderSettle, log: renderLog })[tab]();
+  ({ add: renderAdd, dashboard: renderDashboard, history: renderHistory, settle: renderSettle, logs: renderLogs })[tab]();
   window.scrollTo(0, 0);
 }
 async function refresh(silent) {
@@ -495,7 +477,7 @@ function dashList() {
 function renderDashboard() {
   destroyCharts();
   const s = state.data.settings, ex = state.data.expenses, f = state.dFilter;
-  if (!ex.length) { $('#view').innerHTML = `<div class="empty"><b>No expenses yet</b>The dashboard fills up as soon as the first expense is added.</div><section id="dlog" class="dlog"></section>`; loadDashLog(); return; }
+  if (!ex.length) { $('#view').innerHTML = `<div class="empty"><b>No expenses yet</b>The dashboard fills up as soon as the first expense is added.</div>`; return; }
   const known = new Set([...s.categories, ...ex.map(e => e.category)]);
   f.cats = new Set([...f.cats].filter(c => known.has(c)));
   if (f.paid !== 'all' && !s.travellers.includes(f.paid)) f.paid = 'all';
@@ -503,8 +485,8 @@ function renderDashboard() {
   const max = dashMaxDay();
   if (f.from > max) f.from = 1;
   if (f.to && f.to >= max) f.to = null;
-  $('#view').innerHTML = '<div id="dfilter" class="dfilter"></div><div id="dbody"></div><section id="dlog" class="dlog"></section>';
-  drawDashFilter(); drawDashBody(); loadDashLog();
+  $('#view').innerHTML = '<div id="dfilter" class="dfilter"></div><div id="dbody"></div>';
+  drawDashFilter(); drawDashBody();
 }
 function drawDashFilter() {
   const s = state.data.settings, ex = state.data.expenses, f = state.dFilter, max = dashMaxDay(), to = f.to || max;
@@ -666,73 +648,62 @@ async function undoPayment(id) {
   catch (e) { toast(e.message, true); }
 }
 
-/* ---------------- ACTIVITY LOG (admin) ---------------- */
-const EV_LABEL = { LOGIN: ['Signed in', 'ok'], OPEN: ['Opened app', 'info'], LOGOUT: ['Signed out', ''], LOGIN_FAILED: ['Failed sign-in', 'bad'], LOGIN_BLOCKED: ['Blocked', 'bad'], ADD_EXPENSE: ['Added expense', 'info'], DELETE_EXPENSE: ['Deleted expense', 'warn'], ADD_PAYMENT: ['Payment', 'ok'], DELETE_PAYMENT: ['Payment undone', 'warn'], USER_SAVED: ['User saved', ''] };
-const LOG_GROUPS = { all: null, logins: ['LOGIN', 'LOGOUT', 'OPEN'], failed: ['LOGIN_FAILED', 'LOGIN_BLOCKED'], changes: ['ADD_EXPENSE', 'DELETE_EXPENSE', 'ADD_PAYMENT', 'DELETE_PAYMENT', 'USER_SAVED'] };
+/* ---------------- LOGS (admin) ---------------- */
+const LOG_EVENTS = {
+  LOGIN: ['🔐', 'signed in'], LOGOUT: ['🚪', 'signed out'], OPEN: ['📱', 'opened the app'],
+  LOGIN_FAILED: ['⚠️', 'failed sign-in'], LOGIN_BLOCKED: ['⛔', 'was blocked (too many attempts)'],
+  ADD_EXPENSE: ['➕', 'added an expense'], DELETE_EXPENSE: ['🗑️', 'deleted an expense'],
+  ADD_PAYMENT: ['✅', 'recorded a payment'], DELETE_PAYMENT: ['↩️', 'undid a payment'], USER_SAVED: ['👤', 'account created or reset']
+};
+const LOG_KINDS = {
+  all: ['All', null], signins: ['Sign-ins', ['LOGIN', 'LOGOUT', 'OPEN']], expenses: ['Expenses', ['ADD_EXPENSE', 'DELETE_EXPENSE']],
+  payments: ['Payments', ['ADD_PAYMENT', 'DELETE_PAYMENT']], alerts: ['Alerts', ['LOGIN_FAILED', 'LOGIN_BLOCKED']]
+};
 function ago(t) {
-  if (!t) return 'never';
-  const m = Math.round((Date.now() - t) / 60000);
-  if (m < 1) return 'just now'; if (m < 60) return m + ' min ago';
-  const h = Math.round(m / 60); if (h < 24) return h + ' h ago';
-  const d = Math.round(h / 24); return d + ' day' + (d > 1 ? 's' : '') + ' ago';
+  const s = Math.max(0, Math.round((Date.now() - t) / 1000));
+  if (s < 60) return 'just now';
+  const m = Math.round(s / 60); if (m < 60) return m + ' min ago';
+  const hr = Math.round(m / 60); if (hr < 24) return hr + ' h ago';
+  const d = Math.round(hr / 24); return d + ' day' + (d > 1 ? 's' : '') + ' ago';
 }
-function logParts() {
-  const d = state.logData;
-  const users = [...d.users].sort((a, b) => ((d.lastSeen[b.username] || {}).t || 0) - ((d.lastSeen[a.username] || {}).t || 0));
-  const online = u => { const ls = d.lastSeen[u.username]; return !!ls && ls.event !== 'LOGOUT' && Date.now() - ls.t < 30 * 60000; };
-  const nOn = users.filter(online).length;
-  const usersHtml = users.length ? users.map(u => {
-    const ls = d.lastSeen[u.username], on = online(u);
-    return `<div class="row"><div class="ic">👤</div><div class="mid"><div class="t"><span class="dot${on ? ' on' : ''}"></span>${esc(u.name)}${u.username === state.user.username ? ' (you)' : ''}</div>
-      <div class="s">@${esc(u.username)} · ${u.role === 'admin' ? 'Admin' : 'User'}${u.active ? '' : ' · disabled'} · ${ls ? (EV_LABEL[ls.event] || [ls.event])[0].toLowerCase() + ' ' + ago(ls.t) : 'never signed in'}</div></div></div>`;
-  }).join('') : '<div class="empty">No users</div>';
-  const grp = LOG_GROUPS[state.logFilter];
-  const rows = d.logs.filter(l => !grp || grp.includes(l.event));
-  const chips = [['all', 'All'], ['logins', 'Sign-ins'], ['failed', 'Failed'], ['changes', 'Changes']].map(([k, t]) => `<button type="button" class="chip${state.logFilter === k ? ' on' : ''}" data-lf="${k}">${t}</button>`).join('');
-  const rowsHtml = rows.length ? rows.map(l => {
-    const ev = EV_LABEL[l.event] || [l.event, ''];
-    return `<div class="row"><div class="mid"><div class="t">${esc(l.name || l.username || '—')} <span class="ev ${ev[1]}">${esc(ev[0])}</span></div>
-      <div class="s">${esc(l.time)}${l.details ? ' · ' + esc(l.details) : ''}</div></div></div>`;
-  }).join('') : '<div class="empty"><b>Nothing here yet</b>No matching activity.</div>';
-  return { nOn, usersHtml, chips, rowsHtml };
-}
-/* Log tab */
-async function renderLog() {
+async function renderLogs() {
   $('#view').innerHTML = '<div class="loading">Loading activity…</div>';
-  try { state.logData = await api('getLogs'); }
-  catch (e) { $('#view').innerHTML = `<div class="empty"><b>Could not load the log</b>${esc(e.message)}</div>`; return; }
-  if (state.tab === 'log') drawLog();
+  try { state.logs = await api('getLogs'); }
+  catch (e) { if (state.tab === 'logs') $('#view').innerHTML = `<div class="empty"><b>Couldn't load the log</b>${esc(e.message)}</div>`; return; }
+  if (state.tab === 'logs') drawLogs();
 }
-function drawLog() {
-  if (!state.logData) return;
-  const p = logParts();
-  $('#view').innerHTML = `<h3 class="gh">Users · ${p.nOn} active in the last 30 min</h3><div class="list">${p.usersHtml}</div>
-    <h3 class="gh">Recent activity<small>Latest 400 entries · full history is in the Logs sheet</small></h3>
-    <div class="scroll">${p.chips}</div>${p.rowsHtml.startsWith('<div class="empty"') ? p.rowsHtml : '<div class="list">' + p.rowsHtml + '</div>'}
-    <button class="btn ghost" type="button" data-act="logreload">Reload log</button>`;
-}
-/* Separate Activity log section inside the Dashboard tab */
-async function loadDashLog() {
-  const box = $('#dlog'); if (!box) return;
-  if (!state.logData) box.innerHTML = '<div class="dlog-h"><h2>Activity log</h2></div><div class="panel"><div class="loading" style="padding:30px 0">Loading activity…</div></div>';
-  else drawDashLog();
-  try { state.logData = await api('getLogs'); }
-  catch (e) { if ($('#dlog')) $('#dlog').innerHTML = `<div class="dlog-h"><h2>Activity log</h2></div><div class="panel"><div class="empty"><b>Could not load the log</b>${esc(e.message)}</div></div>`; return; }
-  if (state.tab === 'dashboard') drawDashLog();
-}
-function drawDashLog() {
-  const box = $('#dlog'); if (!box || !state.logData) return;
-  const p = logParts();
-  box.innerHTML = `<div class="dlog-h"><h2>Activity log</h2><button type="button" class="btn small ghost" style="margin:0" data-act="logreload">↻ Reload log</button></div>
-    <div class="dlog-grid">
-      <div class="panel"><h2>Users <small>${p.nOn} active in the last 30 min</small></h2><div class="pscroll">${p.usersHtml}</div></div>
-      <div class="panel"><h2>Recent activity <small>latest 400 · full history in the Logs sheet</small></h2><div class="chips">${p.chips}</div><div class="pscroll">${p.rowsHtml}</div></div>
-    </div>`;
+function drawLogs() {
+  const r = state.logs, f = state.logFilter;
+  if (f.user !== 'all' && !r.users.some(u => u.username === f.user)) f.user = 'all';
+  const kinds = LOG_KINDS[f.kind][1];
+  const logs = r.logs.filter(l => (!kinds || kinds.includes(l.event)) && (f.user === 'all' || l.username === f.user));
+  const people = r.users.map(u => {
+    const ls = r.lastSeen[u.username];
+    const live = u.active && ls && ls.event !== 'LOGOUT' && Date.now() - ls.t < 10 * 60000;
+    const status = !u.active ? 'Account disabled' : !ls ? 'Never signed in' : live ? 'Active now' : 'Last active ' + ago(ls.t) + (ls.event === 'LOGOUT' ? ' · signed out' : '');
+    return `<div class="row"><div class="ic">👤</div><div class="mid"><div class="t">${esc(u.name)} <span class="badge${u.role === 'admin' ? ' admin' : ''}">${u.role === 'admin' ? 'Admin' : 'User'}</span></div><div class="s">${esc(u.username)} · ${esc(status)}</div></div><span class="dot${live ? ' on' : ''}"></span></div>`;
+  }).join('');
+  let html = `<h3 class="gh">People</h3><div class="list">${people || '<div class="empty">No users yet</div>'}</div>
+    <h3 class="gh">Activity</h3>
+    <div class="scroll">${Object.keys(LOG_KINDS).map(k => `<button type="button" class="chip${f.kind === k ? ' on' : ''}" data-lgk="${k}">${LOG_KINDS[k][0]}</button>`).join('')}</div>
+    <div class="lgbar"><select id="lgUser"><option value="all">Everyone</option>${r.users.map(u => `<option value="${esc(u.username)}"${f.user === u.username ? ' selected' : ''}>${esc(u.name)}</option>`).join('')}</select>
+    <span class="s">${logs.length} event${logs.length === 1 ? '' : 's'}</span></div>`;
+  if (!logs.length) html += '<div class="empty"><b>Nothing here yet</b>Events appear as people sign in and add expenses.</div>';
+  let day = '';
+  logs.forEach(l => {
+    const d = new Date(l.t), dl = d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+    if (dl !== day) { if (day) html += '</div>'; day = dl; html += `<div class="dayhead"><span>${esc(dl)}</span></div><div class="list">`; }
+    const ev = LOG_EVENTS[l.event] || ['•', l.event.toLowerCase()];
+    html += `<div class="row"><div class="ic">${ev[0]}</div><div class="mid"><div class="t"><b>${esc(l.name || l.username || 'Someone')}</b> ${esc(ev[1])}</div><div class="s wrap">${esc(l.details)}</div></div><div class="s" style="text-align:right">${esc(d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }))}</div></div>`;
+  });
+  if (day) html += '</div>';
+  html += '<p class="note">Showing the latest 400 events. The full history is in the Logs tab of your Google Sheet.</p>';
+  $('#view').innerHTML = html;
 }
 
 /* ---------------- Events ---------------- */
 document.addEventListener('click', ev => {
-  const el = ev.target.closest('[data-lf],[data-tab],[data-grp],[data-open],[data-del],[data-close],[data-pay],[data-delpay],[data-act],[data-dgrp],[data-dact],#saveBtn');
+  const el = ev.target.closest('[data-tab],[data-grp],[data-open],[data-del],[data-close],[data-pay],[data-delpay],[data-act],[data-dgrp],[data-dact],[data-lgk],#saveBtn');
   if (!el) return;
   if (el.dataset.close && ev.target !== el && !el.classList.contains('btn')) return;
   if (el.dataset.tab) return go(el.dataset.tab);
@@ -747,6 +718,7 @@ document.addEventListener('click', ev => {
     vibrate(6); return updateHint();
   }
   if (!isAdmin()) return; // everything below is admin-only (the server enforces this too)
+  if (el.dataset.lgk) { state.logFilter.kind = el.dataset.lgk; return drawLogs(); }
   if (el.dataset.dgrp === 'cat') { const f = state.dFilter, v = el.dataset.v; f.cats.has(v) ? f.cats.delete(v) : f.cats.add(v); drawDashFilter(); return drawDashBody(); }
   if (el.dataset.dact === 'reset') { state.dFilter = newFilter(); drawDashFilter(); return drawDashBody(); }
   if (el.dataset.open) return openExpense(el.dataset.open);
@@ -755,10 +727,9 @@ document.addEventListener('click', ev => {
   if (el.dataset.pay) return markPaid(Number(el.dataset.pay));
   if (el.dataset.delpay) return undoPayment(el.dataset.delpay);
   if (el.dataset.act === 'csv') return exportCSV();
-  if (el.dataset.lf) { state.logFilter = el.dataset.lf; return state.tab === 'dashboard' ? drawDashLog() : drawLog(); }
-  if (el.dataset.act === 'logreload') return state.tab === 'dashboard' ? loadDashLog() : renderLog();
 });
 document.addEventListener('change', ev => {
+  if (ev.target.id === 'lgUser' && isAdmin()) { state.logFilter.user = ev.target.value; return drawLogs(); }
   const id = ev.target.id;
   if (!isAdmin() || !['dFrom', 'dTo', 'dPaid', 'dShare'].includes(id)) return;
   const f = state.dFilter, max = dashMaxDay(), v = ev.target.value;
